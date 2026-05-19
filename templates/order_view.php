@@ -10,7 +10,9 @@ declare(strict_types=1);
                 <div class="text-secondary"><?= htmlspecialchars((string)$manifest['category_code'] . ' - ' . (string)$manifest['category_label'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$manifest['username'], ENT_QUOTES, 'UTF-8') ?></div>
             </div>
             <div class="text-md-end">
-                <a href="/?route=dashboard" class="btn btn-outline-secondary">Zurück</a>
+                <?php if (!empty($isAdmin)): ?>
+                    <a href="/?route=dashboard" class="btn btn-outline-secondary">Zurück</a>
+                <?php endif; ?>
                 <?php if (!empty($isAdmin) && !empty($manifest['manifest_id'])): ?>
                     <form method="post" action="/?route=order.delete" onsubmit="return confirm('Auftrag wirklich löschen?');" class="d-inline-block ms-2">
                         <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">

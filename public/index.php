@@ -8,8 +8,33 @@ use FotoApp\PhotoRepository;
 use FotoApp\PhotoStorage;
 use FotoApp\View;
 
+function resolve_logo_path(array $config): ?string
+{
+    $configured = trim((string)($config['branding']['logo_path'] ?? ''));
+    if ($configured !== '' && is_file($configured)) {
+        return $configured;
+    }
+
+    $candidates = [
+        FotoApp\APP_BRANDING . '/logo.png',
+        FotoApp\APP_BRANDING . '/logo.jpg',
+        FotoApp\APP_BRANDING . '/logo.jpeg',
+        FotoApp\APP_BRANDING . '/logo.webp',
+        FotoApp\APP_BRANDING . '/logo.gif',
+    ];
+
+    foreach ($candidates as $candidate) {
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
 $config = FotoApp\config();
-$logoUrl = !empty($config['branding']['logo_path']) ? '/?route=logo' : null;
+$logoPath = resolve_logo_path($config);
+$logoUrl = $logoPath !== null ? '/?route=logo' : null;
 $db = FotoApp\database();
 $auth = new Auth($db);
 $storage = new PhotoStorage($config);
@@ -39,8 +64,8 @@ if ($route === 'logout') {
 }
 
 if ($route === 'logo') {
-    $logoPath = (string)($config['branding']['logo_path'] ?? '');
-    if ($logoPath === '' || !is_file($logoPath)) {
+    $logoPath = resolve_logo_path($config);
+    if ($logoPath === null) {
         http_response_code(404);
         echo 'Logo nicht gefunden';
         return;
@@ -70,6 +95,20 @@ if ($route === 'logo') {
             }
         }
     }
+
+    if ($mime === 'application/octet-stream') {
+        $ext = strtolower(pathinfo($realLogo, PATHINFO_EXTENSION));
+        $mimeByExt = [
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'svg' => 'image/svg+xml',
+        ];
+        $mime = $mimeByExt[$ext] ?? $mime;
+    }
+
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . (string) filesize($realLogo));
     readfile($realLogo);

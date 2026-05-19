@@ -19,13 +19,25 @@ declare(strict_types=1);
         .badge-soft { background: rgba(13,110,253,.08); color: var(--app-accent); }
         .thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .75rem; background: #e9eef5; }
         .brand-logo { height: 84px; width: auto; object-fit: contain; max-width: 240px; }
-        .scanner-brand-logo { width: min(92vw, 900px); height: auto; max-height: 280px; object-fit: contain; display: block; margin-top: -34px; margin-bottom: -28px; }
-        .scanner-app-title { font-size: clamp(1.4rem, 5.4vw, 2.2rem); font-weight: 700; line-height: 1.15; }
-        .scanner-mobile-header { min-height: 0; }
+        .scanner-brand-logo { width: auto; height: clamp(44px, 9vw, 68px); max-width: min(58vw, 220px); object-fit: contain; display: block; margin: 0; }
+        .scanner-app-title { font-size: clamp(1rem, 4.2vw, 1.2rem); font-weight: 700; line-height: 1.2; letter-spacing: .01em; }
+        .scanner-mobile-header { min-height: 0; padding: .3rem 0 .15rem; }
+        .scanner-mobile-header.no-logo { padding-top: .55rem; padding-bottom: .45rem; }
         .navbar { padding-top: .45rem; padding-bottom: .45rem; }
+        @media (max-width: 575.98px) {
+            .navbar { padding-top: .2rem; padding-bottom: .2rem; }
+            .scanner-brand-logo { height: 92px; max-width: 72vw; }
+            .scanner-app-title { font-size: 2.7rem; line-height: 1.08; font-weight: 700; }
+            .scanner-mobile-header { padding: .2rem 0 .15rem; }
+            .scanner-mobile-header.no-logo .scanner-app-title { font-size: 3rem; }
+            .app-shell { padding-left: .5rem !important; padding-right: .5rem !important; }
+            main.app-shell { padding-top: .6rem !important; padding-bottom: .8rem !important; }
+        }
         @media (min-width: 992px) {
             .brand-logo { height: 96px; max-width: 300px; }
-            .scanner-brand-logo { width: min(94vw, 1100px); max-height: 320px; margin-top: -44px; margin-bottom: -34px; }
+            .scanner-brand-logo { height: 90px; max-width: 300px; }
+            .scanner-app-title { font-size: 1.35rem; }
+            .scanner-mobile-header { padding: .15rem 0; }
         }
     </style>
 </head>
@@ -35,7 +47,7 @@ declare(strict_types=1);
 <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top <?= $isScannerUser ? 'py-0' : '' ?>">
     <?php if ($isScannerUser): ?>
     <div class="container-fluid app-shell justify-content-center">
-        <div class="scanner-mobile-header w-100 d-flex flex-column align-items-center justify-content-center p-0 gap-0">
+        <div class="scanner-mobile-header w-100 d-flex flex-column align-items-center justify-content-center p-0 gap-0 <?= empty($logoUrl) ? 'no-logo' : '' ?>">
             <?php if (!empty($logoUrl)): ?>
                 <img src="<?= htmlspecialchars((string)$logoUrl, ENT_QUOTES, 'UTF-8') ?>" alt="Firmenlogo" class="scanner-brand-logo">
             <?php endif; ?>

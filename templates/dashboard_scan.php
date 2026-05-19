@@ -35,6 +35,84 @@ declare(strict_types=1);
     border-color: #fff;
     box-shadow: 0 10px 18px rgba(0, 0, 0, .18);
 }
+
+@media (max-width: 575.98px) {
+    .row.g-3 {
+        --bs-gutter-x: .65rem;
+        --bs-gutter-y: .65rem;
+    }
+
+    .hero-card .card-body,
+    .card .card-body {
+        padding: 1rem !important;
+    }
+
+    .hero-card .h4 {
+        font-size: 1.2rem;
+    }
+
+    .scanner-input {
+        font-size: 1.1rem;
+        padding: .75rem .85rem;
+    }
+
+    .form-label {
+        margin-bottom: .35rem;
+    }
+
+    .vstack.gap-3 {
+        gap: .75rem !important;
+    }
+
+    .d-flex.justify-content-between.align-items-center.bg-white {
+        gap: .5rem;
+        align-items: flex-start !important;
+    }
+
+    .d-flex.justify-content-between.align-items-center.bg-white .btn {
+        padding: .2rem .5rem;
+        font-size: .78rem;
+        white-space: nowrap;
+    }
+
+    .category-toggle-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .45rem;
+    }
+
+    .category-tile {
+        aspect-ratio: auto;
+        min-height: 82px;
+        border-radius: .75rem;
+        padding: .45rem;
+    }
+
+    .category-tile-code {
+        font-size: 1.5rem;
+    }
+
+    #cameraButton {
+        height: 74px !important;
+        font-size: 30px !important;
+        border-radius: .75rem;
+    }
+
+    .list-group-item {
+        padding: .65rem 0;
+    }
+
+    .list-group-item .fw-semibold {
+        font-size: .98rem;
+    }
+
+    .list-group-item .small {
+        font-size: .82rem;
+    }
+
+    .list-group-item .badge {
+        font-size: .72rem;
+    }
+}
 </style>
 <?php
 $selectedCategory = (string)($activeCategoryCode ?? '');
@@ -146,13 +224,43 @@ if (empty($isAdmin)) {
                         </div>
                     </div>
                     <div>
-                        <label class="form-label">Fotos</label>
-                        <input class="form-control scanner-input" type="file" name="photos[]" accept="image/*" capture="environment" multiple required>
+                        <label class="form-label"></label>
+                        <div class="text-center">
+                            <button type="button" class="btn btn-light btn-lg" id="cameraButton" style="width: 100%; height: 120px; font-size: 48px; display: flex; align-items: center; justify-content: center;">
+                                📷
+                            </button>
+                        </div>
+                        <input class="form-control scanner-input" type="file" name="photos[]" accept="image/*" capture="environment" multiple required style="display: none;">
                     </div>
-                    <button class="btn btn-light btn-lg-soft fw-semibold">Fotos hochladen</button>
                 </form>
             </div>
         </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var photosInput = document.querySelector('input[name="photos[]"]');
+            var uploadForm = document.querySelector('form[action*="scan.upload"]');
+            var cameraButton = document.getElementById('cameraButton');
+            
+            if (!photosInput || !uploadForm) {
+                return;
+            }
+
+            // Kamera-Button triggert File-Input
+            if (cameraButton) {
+                cameraButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    photosInput.click();
+                });
+            }
+
+            // Auto-Submit bei Fotoaufnahme
+            photosInput.addEventListener('change', function () {
+                if (photosInput.files && photosInput.files.length > 0) {
+                    uploadForm.submit();
+                }
+            });
+        });
+        </script>
     </div>
     <div class="col-12 col-lg-7">
         <div class="card">
