@@ -1,0 +1,5 @@
+storage/app.sqlite
+storage/data/*.json
+storage/uploads/
+storage/logs/
+*.log
