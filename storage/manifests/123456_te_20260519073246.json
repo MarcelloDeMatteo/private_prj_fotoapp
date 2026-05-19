@@ -1,0 +1,27 @@
+{
+    "manifest_id": "123456_te_20260519073246",
+    "order_number": "123456",
+    "category_code": "TE",
+    "category_label": "Test",
+    "username": "Test",
+    "user_id": 3,
+    "created_at": "2026-05-19T07:32:46+00:00",
+    "updated_at": "2026-05-19T07:32:46+00:00",
+    "search_blob": "123456 te test test",
+    "photos": [
+        {
+            "photo_id": "be83c00c9725c6d0",
+            "file_name": "co_123456_TE_003.png",
+            "local_path": "C:\\Users\\marce\\OneDrive - dematteo.ch\\Desktop\\DEV\\private_prj_fotoapp\\app\\src\/..\/storage\/uploads\/co_123456_TE_003.png",
+            "mime_type": "image\/png",
+            "sequence": 3,
+            "order_number": "123456",
+            "category_code": "TE",
+            "category_label": "Test",
+            "uploaded_by": "Test",
+            "user_id": 3,
+            "created_at": "2026-05-19T07:32:46+00:00",
+            "updated_at": "2026-05-19T07:32:46+00:00"
+        }
+    ]
+}

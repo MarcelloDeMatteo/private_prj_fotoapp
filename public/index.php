@@ -92,6 +92,13 @@ if ($route === 'mode.switch' && $method === 'POST') {
     FotoApp\redirect('dashboard');
 }
 
+if ($route === 'order.reset' && $method === 'POST') {
+    FotoApp\verify_csrf();
+    unset($_SESSION['active_order_number'], $_SESSION['active_category_code']);
+    FotoApp\flash('info', 'Aktiver Auftrag zurückgesetzt. Bitte neuen Auftrag scannen.');
+    FotoApp\redirect('dashboard');
+}
+
 if ($route === 'login') {
     View::render('login', [
         'appName' => $config['app_name'],
@@ -118,8 +125,10 @@ if ($route === 'media') {
 
 if ($route === 'scan.upload' && $method === 'POST') {
     FotoApp\verify_csrf();
-    $orderNumber = trim((string)($_POST['order_number'] ?? ''));
-    $categoryCode = trim((string)($_POST['category_code'] ?? ''));
+    $submittedOrder = trim((string)($_POST['order_number'] ?? ''));
+    $orderNumber = $submittedOrder !== '' ? $submittedOrder : trim((string)($_SESSION['active_order_number'] ?? ''));
+    $submittedCategory = trim((string)($_POST['category_code'] ?? ''));
+    $categoryCode = $submittedCategory !== '' ? $submittedCategory : trim((string)($_SESSION['active_category_code'] ?? ''));
     $files = $_FILES['photos'] ?? null;
 
     if ($orderNumber === '') {
@@ -129,8 +138,13 @@ if ($route === 'scan.upload' && $method === 'POST') {
 
     $result = $storage->storeUploads($orderNumber, $categoryCode, $files, $user, $config);
     $photos->saveManifest($result['manifest']);
+    $_SESSION['active_order_number'] = $orderNumber;
+    $_SESSION['active_category_code'] = (string)($result['manifest']['category_code'] ?? $categoryCode);
     FotoApp\flash('success', sprintf('%d Foto(s) gespeichert.', count($result['manifest']['photos'])));
-    FotoApp\redirect('order.view&manifest=' . urlencode($result['manifest']['manifest_id']));
+    if ($auth->isAdmin()) {
+        FotoApp\redirect('order.view&manifest=' . urlencode($result['manifest']['manifest_id']));
+    }
+    FotoApp\redirect('dashboard');
 }
 
 if ($route === 'order.view') {
@@ -223,6 +237,35 @@ if ($route === 'order.delete' && $method === 'POST') {
 
     $photos->deleteManifest($manifestId, $storage);
     FotoApp\flash('success', 'Auftrag gelöscht.');
+    FotoApp\redirect('search');
+}
+
+if ($route === 'order.delete.group' && $method === 'POST') {
+    FotoApp\verify_csrf();
+    if (!$auth->isAdmin()) {
+        FotoApp\flash('danger', 'Keine Berechtigung.');
+        FotoApp\redirect('dashboard');
+    }
+
+    $groupOrder = trim((string)($_POST['order'] ?? ''));
+    $groupCategory = trim((string)($_POST['category'] ?? ''));
+    $groupUserId = (int)($_POST['user_id'] ?? 0);
+    if ($groupOrder === '' || $groupCategory === '' || $groupUserId <= 0) {
+        FotoApp\flash('danger', 'Auftrag nicht gefunden.');
+        FotoApp\redirect('search');
+    }
+
+    $manifests = $photos->manifestsForGroup($groupOrder, $groupCategory, $groupUserId);
+    if (!$manifests) {
+        FotoApp\flash('danger', 'Auftrag nicht gefunden.');
+        FotoApp\redirect('search');
+    }
+
+    foreach ($manifests as $entry) {
+        $photos->deleteManifest((string)($entry['manifest_id'] ?? ''), $storage);
+    }
+
+    FotoApp\flash('success', sprintf('%d Auftragseintrag/-einträge gelöscht.', count($manifests)));
     FotoApp\redirect('search');
 }
 
@@ -524,4 +567,6 @@ View::render($mode === 'admin' && $auth->isAdmin() ? 'dashboard_admin' : 'dashbo
     'isAdmin' => $auth->isAdmin(),
     'mode' => $mode,
     'logoUrl' => $logoUrl,
+    'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
+    'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
 ]);

@@ -37,11 +37,19 @@ declare(strict_types=1);
 }
 </style>
 <?php
-$selectedCategory = (string)($defaultCategory ?? '');
+$selectedCategory = (string)($activeCategoryCode ?? '');
+if ($selectedCategory !== '' && !array_key_exists($selectedCategory, (array)$categories)) {
+    $selectedCategory = '';
+}
+if ($selectedCategory === '') {
+    $selectedCategory = (string)($defaultCategory ?? '');
+}
 if ($selectedCategory === '' && !empty($categories)) {
     $categoryKeys = array_keys($categories);
     $selectedCategory = (string)($categoryKeys[0] ?? '');
 }
+
+$activeOrderNumber = trim((string)($activeOrderNumber ?? ''));
 
 $recentItems = $recent;
 if (empty($isAdmin)) {
@@ -100,11 +108,22 @@ if (empty($isAdmin)) {
                     <div class="text-uppercase opacity-75 small">Scan-Modus</div>
                     <h2 class="h4 mb-0">Auftrag erfassen</h2>
                 </div>
+                <?php if ($activeOrderNumber !== ''): ?>
+                    <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-10 border border-light border-opacity-25 rounded-3 p-2 mb-3">
+                        <div class="small">
+                            Aktiver Auftrag: <strong><?= htmlspecialchars($activeOrderNumber, ENT_QUOTES, 'UTF-8') ?></strong>
+                        </div>
+                        <form method="post" action="/?route=order.reset" class="m-0">
+                            <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
+                            <button class="btn btn-sm btn-outline-light">Nächster Auftrag</button>
+                        </form>
+                    </div>
+                <?php endif; ?>
                 <form method="post" action="/?route=scan.upload" enctype="multipart/form-data" class="vstack gap-3">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                     <div>
                         <label class="form-label">Auftragsnummer</label>
-                        <input class="form-control scanner-input" name="order_number" placeholder="Auftragsnummer scannen oder tippen" autofocus required>
+                        <input class="form-control scanner-input" name="order_number" value="<?= htmlspecialchars($activeOrderNumber, ENT_QUOTES, 'UTF-8') ?>" placeholder="Auftragsnummer scannen oder tippen" <?= $activeOrderNumber === '' ? 'autofocus' : '' ?> required>
                     </div>
                     <div>
                         <label class="form-label">Kategorie</label>
