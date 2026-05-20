@@ -311,6 +311,25 @@ if (empty($isAdmin)) {
             }
             requestAnimationFrame(tick);
         })();
+
+        // Broadcast Message Modal
+        (function () {
+            var currentMessage = <?= json_encode($currentMessage ?? null) ?>;
+            if (!currentMessage || !currentMessage.id) { return; }
+
+            var SEEN_KEY = 'fotoapp_message_seen_' + currentMessage.id;
+            if (sessionStorage.getItem(SEEN_KEY)) { return; }
+
+            var modal = new bootstrap.Modal(document.getElementById('broadcastMessageModal'), { backdrop: 'static', keyboard: false });
+            document.getElementById('broadcastMessageText').textContent = currentMessage.message;
+            
+            document.getElementById('broadcastMessageOk').addEventListener('click', function () {
+                sessionStorage.setItem(SEEN_KEY, '1');
+                modal.hide();
+            });
+            
+            modal.show();
+        })();
         </script>
     </div>
     <div class="col-12 col-lg-7">
@@ -341,6 +360,23 @@ if (empty($isAdmin)) {
                         <div class="text-secondary">Noch keine Erfassungen vorhanden.</div>
                     <?php endif; ?>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Broadcast Message Modal -->
+<div class="modal fade" id="broadcastMessageModal" tabindex="-1" aria-labelledby="broadcastMessageLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="broadcastMessageLabel">System-Nachricht</h5>
+            </div>
+            <div class="modal-body">
+                <p id="broadcastMessageText" class="mb-0"></p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-primary" id="broadcastMessageOk" data-bs-dismiss="modal">Verstanden</button>
             </div>
         </div>
     </div>

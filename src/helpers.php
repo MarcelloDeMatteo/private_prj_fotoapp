@@ -131,3 +131,34 @@ function format_datetime_ch(?string $value): string
         return $value;
     }
 }
+
+function get_current_message(): ?array
+{
+    $file = APP_MANIFESTS . '/.broadcast_message.json';
+    if (!is_file($file)) {
+        return null;
+    }
+    $decoded = json_decode((string)file_get_contents($file), true);
+    return is_array($decoded) ? $decoded : null;
+}
+
+function save_message(string $message): bool
+{
+    $data = [
+        'id' => bin2hex(random_bytes(8)),
+        'message' => $message,
+        'created_at' => date('Y-m-d H:i:s'),
+    ];
+    $file = APP_MANIFESTS . '/.broadcast_message.json';
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json === false) {
+        error_log('JSON encoding failed for broadcast message');
+        return false;
+    }
+    $written = @file_put_contents($file, $json);
+    if ($written === false) {
+        error_log('Failed to write broadcast message to ' . $file . ' - Permission denied or directory does not exist');
+        return false;
+    }
+    return true;
+}

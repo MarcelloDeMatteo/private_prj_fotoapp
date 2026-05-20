@@ -21,4 +21,23 @@ declare(strict_types=1);
         </div>
     </div>
     <!-- Kategorien-Kachel ausgeblendet -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h3 class="h5 mb-3">System-Nachricht für Scanner-Nutzer</h3>
+                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('admin.broadcast'), ENT_QUOTES, 'UTF-8') ?>" class="vstack gap-2">
+                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
+                    <textarea name="message" class="form-control" rows="3" placeholder="Schreibe eine Nachricht für alle Scanner-Nutzer (wird als Popup angezeigt)..."></textarea>
+                    <button type="submit" class="btn btn-primary">Nachricht senden</button>
+                </form>
+                <?php if (!empty($lastMessage)): ?>
+                    <hr>
+                    <div class="small text-secondary">
+                        <strong>Letzte Nachricht:</strong> <?= htmlspecialchars((string)$lastMessage['message'] ?? '', ENT_QUOTES, 'UTF-8') ?>
+                        <br><small><?= htmlspecialchars((string)$lastMessage['created_at'] ?? '', ENT_QUOTES, 'UTF-8') ?></small>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 </div>
