@@ -1,0 +1,27 @@
+{
+    "manifest_id": "12345_we_20260520064519",
+    "order_number": "12345",
+    "category_code": "WE",
+    "category_label": "Wareneingang",
+    "username": "scanner",
+    "user_id": 2,
+    "created_at": "2026-05-20T06:45:19+00:00",
+    "updated_at": "2026-05-20T06:45:19+00:00",
+    "search_blob": "12345 we wareneingang scanner",
+    "photos": [
+        {
+            "photo_id": "7bbd20b01d709f50",
+            "file_name": "co_12345_WE_002.png",
+            "local_path": "\/var\/www\/html\/fotoapp\/src\/..\/storage\/uploads\/co_12345_WE_002.png",
+            "mime_type": "image\/png",
+            "sequence": 2,
+            "order_number": "12345",
+            "category_code": "WE",
+            "category_label": "Wareneingang",
+            "uploaded_by": "scanner",
+            "user_id": 2,
+            "created_at": "2026-05-20T06:45:19+00:00",
+            "updated_at": "2026-05-20T06:45:19+00:00"
+        }
+    ]
+}

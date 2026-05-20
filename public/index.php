@@ -589,22 +589,6 @@ if ($route === 'admin.categories') {
     return;
 }
 
-if ($route === 'admin.broadcast') {
-    $auth->requireAdmin();
-    if ($method === 'POST') {
-        FotoApp\verify_csrf();
-        $message = trim((string)($_POST['message'] ?? ''));
-        if ($message !== '') {
-            if (FotoApp\save_message($message)) {
-                FotoApp\flash('success', 'Nachricht versendet.');
-            } else {
-                FotoApp\flash('error', 'Nachricht konnte nicht gespeichert werden. Bitte Serverberechtigungen prüfen.');
-            }
-        }
-        FotoApp\redirect('dashboard');
-    }
-}
-
 if ($route === 'admin.settings') {
     $auth->requireAdmin();
     if ($method === 'POST') {
@@ -689,32 +673,16 @@ if ($mode !== 'admin') {
     $mode = 'scan';
 }
 
-if ($mode === 'admin' && $auth->isAdmin()) {
-    $orderStats = $photos->countOrdersByPeriod();
-    View::render('dashboard_admin', [
-        'appName' => $config['app_name'],
-        'user' => $user,
-        'categories' => $config['categories'],
-        'orderStats' => $orderStats,
-        'lastMessage' => FotoApp\get_current_message(),
-        'csrf' => FotoApp\csrf_token(),
-        'isAdmin' => $auth->isAdmin(),
-        'mode' => $mode,
-        'logoUrl' => $logoUrl,
-    ]);
-} else {
-    View::render('dashboard_scan', [
-        'appName' => $config['app_name'],
-        'user' => $user,
-        'categories' => $config['categories'],
-        'defaultCategory' => FotoApp\default_category($config),
-        'recent' => $photos->recentForUser($auth->isAdmin() ? null : (int) $user['id'], !$auth->isAdmin()),
-        'csrf' => FotoApp\csrf_token(),
-        'isAdmin' => $auth->isAdmin(),
-        'mode' => $mode,
-        'logoUrl' => $logoUrl,
-        'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
-        'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
-        'currentMessage' => FotoApp\get_current_message(),
-    ]);
-}
+View::render($mode === 'admin' && $auth->isAdmin() ? 'dashboard_admin' : 'dashboard_scan', [
+    'appName' => $config['app_name'],
+    'user' => $user,
+    'categories' => $config['categories'],
+    'defaultCategory' => FotoApp\default_category($config),
+    'recent' => $photos->recentForUser($auth->isAdmin() ? null : (int) $user['id'], !$auth->isAdmin()),
+    'csrf' => FotoApp\csrf_token(),
+    'isAdmin' => $auth->isAdmin(),
+    'mode' => $mode,
+    'logoUrl' => $logoUrl,
+    'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
+    'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
+]);
