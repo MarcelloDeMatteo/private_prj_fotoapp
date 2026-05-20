@@ -5,6 +5,40 @@ namespace FotoApp;
 
 final class PhotoRepository
 {
+    // ...existing code...
+        /**
+         * Zählt alle Aufträge (Manifeste) nach Zeitraum.
+         * @return array [all, today, yesterday, week]
+         */
+        public function countOrdersByPeriod(): array
+        {
+            $all = 0; $today = 0; $yesterday = 0; $week = 0;
+            $tz = new \DateTimeZone(date_default_timezone_get());
+            $now = new \DateTimeImmutable('now', $tz);
+            $dateToday = $now->format('Y-m-d');
+            $dateYesterday = $now->modify('-1 day')->format('Y-m-d');
+            $weekStart = $now->modify('monday this week')->format('Y-m-d');
+            foreach ($this->allManifests() as $item) {
+                $all++;
+                $ts = (string)($item['updated_at'] ?? $item['created_at'] ?? '');
+                if ($ts === '') continue;
+                try {
+                    $dt = new \DateTimeImmutable($ts, $tz);
+                    $date = $dt->setTimezone($tz)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $date = substr($ts, 0, 10);
+                }
+                if ($date === $dateToday) $today++;
+                if ($date === $dateYesterday) $yesterday++;
+                if ($date >= $weekStart && $date <= $dateToday) $week++;
+            }
+            return [
+                'all' => $all,
+                'today' => $today,
+                'yesterday' => $yesterday,
+                'week' => $week
+            ];
+        }
     public function getManifest(string $manifestId): ?array
     {
         $path = $this->manifestPath($manifestId);

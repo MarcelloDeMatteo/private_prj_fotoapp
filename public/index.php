@@ -1,7 +1,84 @@
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/src/bootstrap.php';
+$bootstrapCandidates = array_values(array_filter([
+    dirname(__DIR__) . '/src/bootstrap.php',
+    __DIR__ . '/../src/bootstrap.php',
+    (string)($_SERVER['DOCUMENT_ROOT'] ?? '') . '/../src/bootstrap.php',
+    getcwd() . '/src/bootstrap.php',
+]));
+
+$bootstrapPath = null;
+foreach ($bootstrapCandidates as $candidate) {
+    $resolved = realpath($candidate);
+    if (is_string($resolved) && $resolved !== '' && is_file($resolved)) {
+        $bootstrapPath = $resolved;
+        break;
+    }
+}
+
+$appRoot = $bootstrapPath !== null ? dirname($bootstrapPath, 2) : dirname(__DIR__);
+$logDir = $appRoot . '/storage/logs';
+$logFile = $logDir . '/php-error.log';
+
+if (is_dir(dirname($logDir)) || @mkdir(dirname($logDir), 0777, true)) {
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0777, true);
+    }
+    @ini_set('log_errors', '1');
+    @ini_set('error_log', $logFile);
+}
+
+function render_bootstrap_error(string $message): void
+{
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+    }
+
+    echo "Foto Scan App - Startfehler\n";
+    echo $message . "\n";
+    echo "Details im Server-Log: storage/logs/php-error.log\n";
+}
+
+if (PHP_VERSION_ID < 80000) {
+    render_bootstrap_error('Diese Anwendung benötigt mindestens PHP 8.0 (empfohlen: 8.2+). Aktuell: ' . PHP_VERSION);
+    exit;
+}
+
+register_shutdown_function(static function (): void {
+    $error = error_get_last();
+    if (!$error) {
+        return;
+    }
+
+    $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+    if (!in_array((int) ($error['type'] ?? 0), $fatalTypes, true)) {
+        return;
+    }
+
+    error_log(sprintf(
+        'Fatal startup error: %s in %s:%d',
+        (string) ($error['message'] ?? 'unknown error'),
+        (string) ($error['file'] ?? 'unknown file'),
+        (int) ($error['line'] ?? 0)
+    ));
+
+    render_bootstrap_error('Ein fataler Fehler ist beim Start aufgetreten.');
+});
+
+if ($bootstrapPath === null) {
+    render_bootstrap_error('Bootstrap nicht gefunden. Gepruefte Pfade: ' . implode(' | ', $bootstrapCandidates));
+    exit;
+}
+
+try {
+    require $bootstrapPath;
+} catch (\Throwable $error) {
+    error_log(sprintf('Bootstrap exception: %s in %s:%d', $error->getMessage(), $error->getFile(), $error->getLine()));
+    render_bootstrap_error('Die Anwendung konnte nicht initialisiert werden.');
+    exit;
+}
 
 use FotoApp\Auth;
 use FotoApp\PhotoRepository;
@@ -34,7 +111,7 @@ function resolve_logo_path(array $config): ?string
 
 $config = FotoApp\config();
 $logoPath = resolve_logo_path($config);
-$logoUrl = $logoPath !== null ? '/?route=logo' : null;
+$logoUrl = $logoPath !== null ? FotoApp\route_url('logo') : null;
 $db = FotoApp\database();
 $auth = new Auth($db);
 $storage = new PhotoStorage($config);
@@ -596,16 +673,30 @@ if ($mode !== 'admin') {
     $mode = 'scan';
 }
 
-View::render($mode === 'admin' && $auth->isAdmin() ? 'dashboard_admin' : 'dashboard_scan', [
-    'appName' => $config['app_name'],
-    'user' => $user,
-    'categories' => $config['categories'],
-    'defaultCategory' => FotoApp\default_category($config),
-    'recent' => $photos->recentForUser($auth->isAdmin() ? null : (int) $user['id'], !$auth->isAdmin()),
-    'csrf' => FotoApp\csrf_token(),
-    'isAdmin' => $auth->isAdmin(),
-    'mode' => $mode,
-    'logoUrl' => $logoUrl,
-    'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
-    'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
-]);
+if ($mode === 'admin' && $auth->isAdmin()) {
+    $orderStats = $photos->countOrdersByPeriod();
+    View::render('dashboard_admin', [
+        'appName' => $config['app_name'],
+        'user' => $user,
+        'categories' => $config['categories'],
+        'orderStats' => $orderStats,
+        'csrf' => FotoApp\csrf_token(),
+        'isAdmin' => $auth->isAdmin(),
+        'mode' => $mode,
+        'logoUrl' => $logoUrl,
+    ]);
+} else {
+    View::render('dashboard_scan', [
+        'appName' => $config['app_name'],
+        'user' => $user,
+        'categories' => $config['categories'],
+        'defaultCategory' => FotoApp\default_category($config),
+        'recent' => $photos->recentForUser($auth->isAdmin() ? null : (int) $user['id'], !$auth->isAdmin()),
+        'csrf' => FotoApp\csrf_token(),
+        'isAdmin' => $auth->isAdmin(),
+        'mode' => $mode,
+        'logoUrl' => $logoUrl,
+        'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
+        'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
+    ]);
+}

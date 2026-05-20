@@ -1,0 +1,15 @@
+{
+    "app_name": "NiceToHAve",
+    "storage_mode": "sftp",
+    "default_category": "WE",
+    "branding": {
+        "logo_path": "C:\\Users\\marce\\OneDrive - dematteo.ch\\Desktop\\DEV\\private_prj_fotoapp\\app\\src\/..\/storage\/data\/branding\/logo.png"
+    },
+    "remote": {
+        "host": "",
+        "port": 21,
+        "username": "admin",
+        "password": "Admin1234!",
+        "base_path": ""
+    }
+}

@@ -58,8 +58,47 @@ function verify_csrf(): void
 
 function redirect(string $route): never
 {
-    header('Location: /?route=' . $route);
+    header('Location: ' . route_url($route));
     exit;
+}
+
+function app_base_url(): string
+{
+    static $base = null;
+    if (is_string($base)) {
+        return $base;
+    }
+
+    $configured = trim((string) (getenv('FOTOAPP_BASE_URL') ?: 'http://172.16.11.241/fotoapp'));
+    if ($configured !== '') {
+        $base = rtrim($configured, '/');
+        return $base;
+    }
+
+    $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    $dir = str_replace('\\', '/', dirname($scriptName));
+    if ($dir === '/' || $dir === '.' || $dir === '\\') {
+        $base = '';
+        return $base;
+    }
+
+    $base = rtrim($dir, '/');
+    return $base;
+}
+
+function app_url(string $path = ''): string
+{
+    $base = app_base_url();
+    if ($path === '') {
+        return $base === '' ? '/' : $base . '/';
+    }
+
+    return $base . '/' . ltrim($path, '/');
+}
+
+function route_url(string $route): string
+{
+    return app_url('?route=' . ltrim($route, '?'));
 }
 
 function default_category(array $config): string

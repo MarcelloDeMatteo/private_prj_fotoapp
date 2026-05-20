@@ -31,7 +31,7 @@ declare(strict_types=1);
 
 .btn-check:checked + .category-tile {
     background: #fff;
-    color: #0b5ed7;
+    color: #009F9B;
     border-color: #fff;
     box-shadow: 0 10px 18px rgba(0, 0, 0, .18);
 }
@@ -167,7 +167,7 @@ if (empty($isAdmin)) {
             <div class="text-secondary small text-uppercase">Ansicht</div>
             <div class="h5 mb-0">Scan-Modus aktiv</div>
         </div>
-        <form method="post" action="/?route=mode.switch" class="d-flex gap-2 align-items-center">
+        <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('mode.switch'), ENT_QUOTES, 'UTF-8') ?>" class="d-flex gap-2 align-items-center">
             <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
             <select class="form-select" name="mode">
                 <option value="scan" <?= $mode === 'scan' ? 'selected' : '' ?>>Scanner</option>
@@ -187,17 +187,27 @@ if (empty($isAdmin)) {
                     <h2 class="h4 mb-0">Auftrag erfassen</h2>
                 </div>
                 <?php if ($activeOrderNumber !== ''): ?>
-                    <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-10 border border-light border-opacity-25 rounded-3 p-2 mb-3">
-                        <div class="small">
+                    <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-10 border border-light border-opacity-25 rounded-3 p-2 mb-3" id="activeOrderBar">
+                        <div class="small d-flex align-items-center gap-2">
+                            <svg id="orderCountdownRing" width="34" height="34" viewBox="0 0 34 34" style="flex-shrink:0;cursor:default" title="Auftrag läuft ab">
+                                <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+                                <circle id="orderCountdownArc" cx="17" cy="17" r="14" fill="none" stroke="#ffffff" stroke-width="3"
+                                    stroke-dasharray="87.96" stroke-dashoffset="0"
+                                    stroke-linecap="round"
+                                    transform="rotate(-90 17 17)"
+                                    style="transition:stroke 0.5s"/>
+                                <text id="orderCountdownText" x="17" y="21" text-anchor="middle"
+                                    font-size="10" fill="white" font-family="system-ui,sans-serif" font-weight="700">60</text>
+                            </svg>
                             Aktiver Auftrag: <strong><?= htmlspecialchars($activeOrderNumber, ENT_QUOTES, 'UTF-8') ?></strong>
                         </div>
-                        <form method="post" action="/?route=order.reset" class="m-0">
+                        <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('order.reset'), ENT_QUOTES, 'UTF-8') ?>" class="m-0" id="orderResetForm">
                             <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                             <button class="btn btn-sm btn-outline-light">Nächster Auftrag</button>
                         </form>
                     </div>
                 <?php endif; ?>
-                <form method="post" action="/?route=scan.upload" enctype="multipart/form-data" class="vstack gap-3">
+                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('scan.upload'), ENT_QUOTES, 'UTF-8') ?>" enctype="multipart/form-data" class="vstack gap-3">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                     <div>
                         <label class="form-label">Auftragsnummer</label>
@@ -260,6 +270,47 @@ if (empty($isAdmin)) {
                 }
             });
         });
+
+        // Auftrag-Timeout Countdown (60 Sekunden)
+        (function () {
+            var arc        = document.getElementById('orderCountdownArc');
+            var label      = document.getElementById('orderCountdownText');
+            var resetForm  = document.getElementById('orderResetForm');
+            if (!arc || !label || !resetForm) { return; }
+
+            var TIMEOUT      = 60;
+            var CIRCUMF      = 87.96;
+            var ORDER_NUMBER = <?= json_encode($activeOrderNumber ?? '') ?>;
+            var STORAGE_KEY  = 'fotoapp_order_start_' + ORDER_NUMBER;
+
+            var stored = sessionStorage.getItem(STORAGE_KEY);
+            var startTime = stored ? parseInt(stored, 10) : Date.now();
+            if (!stored) { sessionStorage.setItem(STORAGE_KEY, startTime); }
+
+            function tick() {
+                var elapsed   = (Date.now() - startTime) / 1000;
+                var remaining = Math.max(0, TIMEOUT - elapsed);
+                var fraction  = remaining / TIMEOUT;
+
+                arc.setAttribute('stroke-dashoffset', CIRCUMF * (1 - fraction));
+                label.textContent = Math.ceil(remaining);
+
+                if (remaining <= 10) {
+                    arc.setAttribute('stroke', '#ffc107');
+                }
+                if (remaining <= 5) {
+                    arc.setAttribute('stroke', '#ff4444');
+                }
+
+                if (remaining <= 0) {
+                    sessionStorage.removeItem(STORAGE_KEY);
+                    resetForm.submit();
+                    return;
+                }
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        })();
         </script>
     </div>
     <div class="col-12 col-lg-7">
@@ -270,12 +321,12 @@ if (empty($isAdmin)) {
                     <?php foreach ($recentItems as $item): ?>
                         <?php $photoCount = isset($item['photos_count']) ? (int)$item['photos_count'] : count((array)($item['photos'] ?? [])); ?>
                         <?php
-                        $detailHref = '/?route=order.view&manifest=' . urlencode((string)($item['manifest_id'] ?? ''));
+                        $detailHref = FotoApp\route_url('order.view&manifest=' . urlencode((string)($item['manifest_id'] ?? '')));
                         if (empty($isAdmin) && isset($item['group_date'])) {
-                            $detailHref = '/?route=order.view&order=' . urlencode((string)($item['order_number'] ?? ''))
+                            $detailHref = FotoApp\route_url('order.view&order=' . urlencode((string)($item['order_number'] ?? ''))
                                 . '&category=' . urlencode((string)($item['category_code'] ?? ''))
                                 . '&user_id=' . urlencode((string)($item['user_id'] ?? '0'))
-                                . '&date=' . urlencode((string)$item['group_date']);
+                                . '&date=' . urlencode((string)$item['group_date']));
                         }
                         ?>
                         <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="<?= htmlspecialchars($detailHref, ENT_QUOTES, 'UTF-8') ?>">

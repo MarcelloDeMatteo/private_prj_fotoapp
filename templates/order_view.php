@@ -11,10 +11,10 @@ declare(strict_types=1);
             </div>
             <div class="text-md-end">
                 <?php if (!empty($isAdmin)): ?>
-                    <a href="/?route=dashboard" class="btn btn-outline-secondary">Zurück</a>
+                    <a href="<?= htmlspecialchars(FotoApp\route_url('dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="btn btn-outline-secondary">Zurück</a>
                 <?php endif; ?>
                 <?php if (!empty($isAdmin) && !empty($manifest['manifest_id'])): ?>
-                    <form method="post" action="/?route=order.delete" onsubmit="return confirm('Auftrag wirklich löschen?');" class="d-inline-block ms-2">
+                    <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('order.delete'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Auftrag wirklich löschen?');" class="d-inline-block ms-2">
                         <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="manifest_id" value="<?= htmlspecialchars((string)$manifest['manifest_id'], ENT_QUOTES, 'UTF-8') ?>">
                         <button class="btn btn-outline-danger">Auftrag löschen</button>
@@ -32,14 +32,14 @@ declare(strict_types=1);
                 <?php $photoManifestId = (string)($photo['source_manifest_id'] ?? $manifest['manifest_id']); ?>
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="card h-100">
-                        <img class="thumb card-img-top" src="/?route=media&manifest=<?= urlencode($photoManifestId) ?>&file=<?= urlencode((string)$photo['file_name']) ?>" alt="Foto">
+                        <img class="thumb card-img-top" src="<?= htmlspecialchars(FotoApp\route_url('media&manifest=' . urlencode($photoManifestId) . '&file=' . urlencode((string)$photo['file_name'])), ENT_QUOTES, 'UTF-8') ?>" alt="Foto">
                         <div class="card-body">
                             <div class="fw-semibold mb-1"><?= htmlspecialchars((string)$photo['file_name'], ENT_QUOTES, 'UTF-8') ?></div>
                             <div class="text-secondary small mb-3">
                                 <?= htmlspecialchars((string)$photo['uploaded_by'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars(\FotoApp\format_datetime_ch((string)$photo['created_at']), ENT_QUOTES, 'UTF-8') ?>
                             </div>
                             <?php if (!empty($isAdmin)): ?>
-                                <form method="post" action="/?route=photo.edit" class="row g-2 mb-2">
+                                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('photo.edit'), ENT_QUOTES, 'UTF-8') ?>" class="row g-2 mb-2">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="manifest_id" value="<?= htmlspecialchars($photoManifestId, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="photo_id" value="<?= htmlspecialchars((string)$photo['photo_id'], ENT_QUOTES, 'UTF-8') ?>">
@@ -59,7 +59,7 @@ declare(strict_types=1);
                                         <button class="btn btn-sm btn-primary">Speichern</button>
                                     </div>
                                 </form>
-                                <form method="post" action="/?route=photo.delete" onsubmit="return confirm('Foto wirklich löschen?');">
+                                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('photo.delete'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Foto wirklich löschen?');">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="manifest_id" value="<?= htmlspecialchars($photoManifestId, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="photo_id" value="<?= htmlspecialchars((string)$photo['photo_id'], ENT_QUOTES, 'UTF-8') ?>">

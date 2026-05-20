@@ -1,0 +1,14 @@
+{
+    "WE": {
+        "label": "Wareneingang",
+        "is_default": true
+    },
+    "KO": {
+        "label": "Kommissionierung",
+        "is_default": false
+    },
+    "VS": {
+        "label": "Versand",
+        "is_default": false
+    }
+}

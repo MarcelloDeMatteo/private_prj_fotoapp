@@ -9,7 +9,7 @@ declare(strict_types=1);
                     <h1 class="h3 fw-bold mb-2">Anmeldung</h1>
                     <p class="text-secondary mb-0">Einfacher Zugriff für Scan-User und Admins.</p>
                 </div>
-                <form method="post" action="/?route=login">
+                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('login'), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars(\FotoApp\csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
                     <div class="mb-3">
                         <label class="form-label">Benutzername</label>

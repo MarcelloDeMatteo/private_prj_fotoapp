@@ -28,7 +28,7 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
 <div class="card mb-3">
     <div class="card-body p-4">
         <h1 class="h4 mb-3">Suche</h1>
-        <form id="searchForm" method="get" action="/" class="row g-2">
+        <form id="searchForm" method="get" action="<?= htmlspecialchars(FotoApp\app_url(''), ENT_QUOTES, 'UTF-8') ?>" class="row g-2">
             <input type="hidden" name="route" value="search">
             <div class="col-12 col-md-4">
                 <input id="searchQuery" class="form-control" name="q" value="<?= htmlspecialchars($query, ENT_QUOTES, 'UTF-8') ?>" placeholder="Auftragsnummer oder Stichwort" autocomplete="off">
@@ -60,9 +60,9 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
         <div class="list-group list-group-flush">
             <?php foreach ($displayResults as $result): ?>
                 <?php
-                $openHref = '/?route=order.view&order=' . urlencode((string)($result['order_number'] ?? ''))
+                $openHref = FotoApp\route_url('order.view&order=' . urlencode((string)($result['order_number'] ?? ''))
                     . '&category=' . urlencode((string)($result['category_code'] ?? ''))
-                    . '&user_id=' . urlencode((string)($result['user_id'] ?? '0'));
+                    . '&user_id=' . urlencode((string)($result['user_id'] ?? '0')));
                 $photoCount = (int)($result['photos_count'] ?? count((array)($result['photos'] ?? [])));
                 $capturesCount = (int)($result['captures_count'] ?? 1);
                 ?>
@@ -75,7 +75,7 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
                         <div class="d-flex align-items-center gap-3">
                             <span class="small text-secondary"><?= $photoCount ?> Foto(s)</span>
                             <?php if (!empty($isAdmin)): ?>
-                                <form method="post" action="/?route=order.delete.group" onsubmit="return confirm('Auftrag wirklich löschen? (alle Erfassungen dieser Gruppe)');" class="m-0">
+                                <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('order.delete.group'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Auftrag wirklich löschen? (alle Erfassungen dieser Gruppe)');" class="m-0">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="order" value="<?= htmlspecialchars((string)($result['order_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="category" value="<?= htmlspecialchars((string)($result['category_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
@@ -109,9 +109,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var debounceTimer = null;
     var activeRequest = null;
 
+    var baseUrl = <?= json_encode(FotoApp\app_url(''), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+
     function buildSearchUrl() {
         var params = new URLSearchParams(new FormData(form));
-        return '/?' + params.toString();
+        return baseUrl + '?' + params.toString();
     }
 
     function runSearch() {

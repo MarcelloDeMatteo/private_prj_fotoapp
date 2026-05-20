@@ -1,0 +1,27 @@
+{
+    "manifest_id": "1234567_we_20260519144452",
+    "order_number": "1234567",
+    "category_code": "WE",
+    "category_label": "Wareneingang",
+    "username": "Test",
+    "user_id": 3,
+    "created_at": "2026-05-19T14:44:52+02:00",
+    "updated_at": "2026-05-19T14:44:52+02:00",
+    "search_blob": "1234567 we wareneingang test",
+    "photos": [
+        {
+            "photo_id": "d3c8398e659ea6b7",
+            "file_name": "co_1234567_WE_003.png",
+            "local_path": "\/var\/www\/vhosts\/hosting167303.ae83a.netcup.net\/fotoapp.marcellodematteo.ch\/httpdocs\/src\/..\/storage\/uploads\/co_1234567_WE_003.png",
+            "mime_type": "image\/png",
+            "sequence": 3,
+            "order_number": "1234567",
+            "category_code": "WE",
+            "category_label": "Wareneingang",
+            "uploaded_by": "Test",
+            "user_id": 3,
+            "created_at": "2026-05-19T14:44:52+02:00",
+            "updated_at": "2026-05-19T14:44:52+02:00"
+        }
+    ]
+}
