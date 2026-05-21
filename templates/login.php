@@ -22,7 +22,7 @@ declare(strict_types=1);
                     <button class="btn btn-primary btn-lg w-100">Anmelden</button>
                 </form>
                 <div class="mt-4 small text-secondary">
-                    Demo: admin / Admin123! oder scanner / Scanner123!
+                    
                 </div>
             </div>
         </div>
