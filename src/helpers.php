@@ -131,3 +131,94 @@ function format_datetime_ch(?string $value): string
         return $value;
     }
 }
+
+function app_request_id(): string
+{
+    static $requestId = null;
+    if (is_string($requestId) && $requestId !== '') {
+        return $requestId;
+    }
+
+    $headerRequestId = trim((string)($_SERVER['HTTP_X_REQUEST_ID'] ?? ''));
+    if ($headerRequestId !== '') {
+        $requestId = substr(preg_replace('/[^a-zA-Z0-9._:-]/', '_', $headerRequestId) ?? '', 0, 80);
+        if ($requestId !== '') {
+            return $requestId;
+        }
+    }
+
+    try {
+        $requestId = bin2hex(random_bytes(8));
+    } catch (\Throwable) {
+        $requestId = (string)time();
+    }
+
+    return $requestId;
+}
+
+function ini_size_to_bytes(string $size): int
+{
+    $trimmed = trim($size);
+    if ($trimmed === '') {
+        return 0;
+    }
+
+    $unit = strtolower(substr($trimmed, -1));
+    $number = (float)$trimmed;
+
+    return match ($unit) {
+        'g' => (int)($number * 1024 * 1024 * 1024),
+        'm' => (int)($number * 1024 * 1024),
+        'k' => (int)($number * 1024),
+        default => (int)$number,
+    };
+}
+
+function upload_error_message(int $errorCode): string
+{
+    return match ($errorCode) {
+        UPLOAD_ERR_OK => 'UPLOAD_ERR_OK',
+        UPLOAD_ERR_INI_SIZE => 'UPLOAD_ERR_INI_SIZE',
+        UPLOAD_ERR_FORM_SIZE => 'UPLOAD_ERR_FORM_SIZE',
+        UPLOAD_ERR_PARTIAL => 'UPLOAD_ERR_PARTIAL',
+        UPLOAD_ERR_NO_FILE => 'UPLOAD_ERR_NO_FILE',
+        UPLOAD_ERR_NO_TMP_DIR => 'UPLOAD_ERR_NO_TMP_DIR',
+        UPLOAD_ERR_CANT_WRITE => 'UPLOAD_ERR_CANT_WRITE',
+        UPLOAD_ERR_EXTENSION => 'UPLOAD_ERR_EXTENSION',
+        default => 'UPLOAD_ERR_UNKNOWN',
+    };
+}
+
+function app_log(string $channel, array $context = []): void
+{
+    $safeChannel = preg_replace('/[^a-z0-9._-]/i', '_', $channel) ?: 'app';
+    $path = APP_STORAGE . '/logs/' . $safeChannel . '.log';
+    $entry = [
+        'ts' => date('c'),
+        'request_id' => app_request_id(),
+        'channel' => $safeChannel,
+        'route' => (string)($_GET['route'] ?? ''),
+        'method' => (string)($_SERVER['REQUEST_METHOD'] ?? ''),
+        'remote_addr' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+        'user_agent' => (string)($_SERVER['HTTP_USER_AGENT'] ?? ''),
+        'context' => $context,
+    ];
+
+    try {
+        $line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($line === false) {
+            $line = json_encode([
+                'ts' => date('c'),
+                'request_id' => app_request_id(),
+                'channel' => $safeChannel,
+                'context' => ['log_error' => 'json_encode_failed'],
+            ]);
+        }
+        if (!is_dir(APP_STORAGE . '/logs')) {
+            @mkdir(APP_STORAGE . '/logs', 0777, true);
+        }
+        @file_put_contents($path, (string)$line . PHP_EOL, FILE_APPEND | LOCK_EX);
+    } catch (\Throwable $e) {
+        error_log('app_log failed: ' . $e->getMessage());
+    }
+}

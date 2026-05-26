@@ -11,21 +11,62 @@ final class PhotoStorage
 
     public function storeUploads(string $orderNumber, string $categoryCode, mixed $files, array $user, array $config): array
     {
+        $requestId = $this->requestId();
         $categoryCode = $categoryCode !== '' ? $categoryCode : default_category($config);
         $categoryLabel = (string)($config['categories'][$categoryCode]['label'] ?? $categoryCode);
         $manifestId = $this->manifestId($orderNumber, $categoryCode);
         $timestamp = date('c');
         $photos = [];
         $sequence = $this->nextSequenceForOrderCategory($orderNumber, $categoryCode);
+        $failures = [];
+
+        $this->logDiagnostics([
+            'event' => 'scan_upload_start',
+            'request_id' => $requestId,
+            'order_number' => $orderNumber,
+            'category_code' => $categoryCode,
+            'user_id' => (int)($user['id'] ?? 0),
+            'username' => (string)($user['username'] ?? ''),
+            'upload_tmp_dir' => (string)(ini_get('upload_tmp_dir') ?: sys_get_temp_dir()),
+            'upload_max_filesize' => (string)ini_get('upload_max_filesize'),
+            'post_max_size' => (string)ini_get('post_max_size'),
+            'memory_limit' => (string)ini_get('memory_limit'),
+            'max_file_uploads' => (string)ini_get('max_file_uploads'),
+            'app_uploads_dir' => APP_UPLOADS,
+            'app_uploads_dir_writable' => is_writable(APP_UPLOADS),
+        ]);
 
         $uploadedFiles = $this->normalizeUploadArray($files);
-        foreach ($uploadedFiles as $file) {
-            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        foreach ($uploadedFiles as $index => $file) {
+            $errorCode = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+            $fileContext = [
+                'event' => 'scan_upload_file',
+                'request_id' => $requestId,
+                'index' => $index,
+                'original_name' => (string)($file['name'] ?? ''),
+                'mime' => (string)($file['type'] ?? ''),
+                'size' => (int)($file['size'] ?? 0),
+                'error_code' => $errorCode,
+                'error_label' => $this->uploadErrorMessage($errorCode),
+            ];
+
+            if ($errorCode !== UPLOAD_ERR_OK) {
+                $failures[] = $fileContext;
+                $this->logDiagnostics($fileContext + ['status' => 'failed_before_move']);
                 continue;
             }
 
             $tmp = (string) $file['tmp_name'];
             if (!is_uploaded_file($tmp)) {
+                $failure = $fileContext + [
+                    'status' => 'failed_not_uploaded_file',
+                    'tmp_name' => $tmp,
+                    'tmp_exists' => is_file($tmp),
+                    'tmp_dir' => dirname($tmp),
+                    'tmp_dir_writable' => is_writable(dirname($tmp)),
+                ];
+                $failures[] = $failure;
+                $this->logDiagnostics($failure);
                 continue;
             }
 
@@ -33,10 +74,25 @@ final class PhotoStorage
             $fileName = $this->buildFileName($orderNumber, $categoryCode, $sequence, $extension);
             $localPath = APP_UPLOADS . '/' . $fileName;
             if (!move_uploaded_file($tmp, $localPath)) {
+                $lastError = error_get_last();
+                $failure = $fileContext + [
+                    'status' => 'failed_move_uploaded_file',
+                    'tmp_name' => $tmp,
+                    'local_path' => $localPath,
+                    'target_dir_writable' => is_writable(dirname($localPath)),
+                    'last_error' => is_array($lastError) ? (string)($lastError['message'] ?? '') : '',
+                ];
+                $failures[] = $failure;
+                $this->logDiagnostics($failure);
                 continue;
             }
 
             $this->syncRemote($localPath, $fileName);
+            $this->logDiagnostics($fileContext + [
+                'status' => 'stored_local',
+                'file_name' => $fileName,
+                'local_path' => $localPath,
+            ]);
 
             $photos[] = [
                 'photo_id' => bin2hex(random_bytes(8)),
@@ -55,6 +111,8 @@ final class PhotoStorage
             $sequence++;
         }
 
+        $savedCount = count($photos);
+
         $manifest = [
             'manifest_id' => $manifestId,
             'order_number' => $orderNumber,
@@ -68,9 +126,94 @@ final class PhotoStorage
             'photos' => $photos,
         ];
 
-        file_put_contents(APP_MANIFESTS . '/' . $manifestId . '.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        if ($savedCount > 0) {
+            file_put_contents(APP_MANIFESTS . '/' . $manifestId . '.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
 
-        return ['manifest' => $manifest];
+        $this->logDiagnostics([
+            'event' => 'scan_upload_finish',
+            'request_id' => $requestId,
+            'manifest_id' => $manifestId,
+            'saved_count' => $savedCount,
+            'attempted_count' => count($uploadedFiles),
+            'failed_count' => count($failures),
+            'empty_post_possible' => ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+                && empty($_POST)
+                && empty($_FILES)
+            && ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > $this->iniSizeToBytes((string)ini_get('post_max_size'))),
+        ]);
+
+        return [
+            'manifest' => $manifest,
+            'saved_count' => $savedCount,
+            'attempted_count' => count($uploadedFiles),
+            'failed_count' => count($failures),
+            'request_id' => $requestId,
+        ];
+    }
+
+    private function requestId(): string
+    {
+        if (function_exists('FotoApp\\app_request_id')) {
+            return app_request_id();
+        }
+
+        try {
+            return bin2hex(random_bytes(8));
+        } catch (\Throwable) {
+            return (string)time();
+        }
+    }
+
+    private function logDiagnostics(array $context): void
+    {
+        if (function_exists('FotoApp\\app_log')) {
+            app_log('upload-diagnostics', $context);
+            return;
+        }
+
+        error_log('upload-diagnostics fallback: ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function uploadErrorMessage(int $errorCode): string
+    {
+        if (function_exists('FotoApp\\upload_error_message')) {
+            return upload_error_message($errorCode);
+        }
+
+        return match ($errorCode) {
+            UPLOAD_ERR_OK => 'UPLOAD_ERR_OK',
+            UPLOAD_ERR_INI_SIZE => 'UPLOAD_ERR_INI_SIZE',
+            UPLOAD_ERR_FORM_SIZE => 'UPLOAD_ERR_FORM_SIZE',
+            UPLOAD_ERR_PARTIAL => 'UPLOAD_ERR_PARTIAL',
+            UPLOAD_ERR_NO_FILE => 'UPLOAD_ERR_NO_FILE',
+            UPLOAD_ERR_NO_TMP_DIR => 'UPLOAD_ERR_NO_TMP_DIR',
+            UPLOAD_ERR_CANT_WRITE => 'UPLOAD_ERR_CANT_WRITE',
+            UPLOAD_ERR_EXTENSION => 'UPLOAD_ERR_EXTENSION',
+            default => 'UPLOAD_ERR_UNKNOWN',
+        };
+    }
+
+    private function iniSizeToBytes(string $size): int
+    {
+        if (function_exists('FotoApp\\ini_size_to_bytes')) {
+            return ini_size_to_bytes($size);
+        }
+
+        $trimmed = trim($size);
+        if ($trimmed === '') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($trimmed, -1));
+        $number = (float)$trimmed;
+
+        return match ($unit) {
+            'g' => (int)($number * 1024 * 1024 * 1024),
+            'm' => (int)($number * 1024 * 1024),
+            'k' => (int)($number * 1024),
+            default => (int)$number,
+        };
     }
 
     public function buildFileName(string $orderNumber, string $categoryCode, int $sequence, string $extension): string

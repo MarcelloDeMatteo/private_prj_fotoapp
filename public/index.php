@@ -247,18 +247,50 @@ if ($route === 'scan.upload' && $method === 'POST') {
     $categoryCode = $submittedCategory !== '' ? $submittedCategory : trim((string)($_SESSION['active_category_code'] ?? ''));
     $files = $_FILES['photos'] ?? null;
 
+    if (function_exists('FotoApp\\app_log')) {
+        $routeRequestId = function_exists('FotoApp\\app_request_id')
+            ? FotoApp\app_request_id()
+            : (function_exists('random_bytes') ? bin2hex(random_bytes(8)) : (string)time());
+        FotoApp\app_log('upload-diagnostics', [
+            'event' => 'scan_upload_route_hit',
+            'request_id' => $routeRequestId,
+            'content_length' => (int)($_SERVER['CONTENT_LENGTH'] ?? 0),
+            'post_count' => is_array($_POST) ? count($_POST) : 0,
+            'files_count' => is_array($_FILES) ? count($_FILES) : 0,
+            'content_type' => (string)($_SERVER['CONTENT_TYPE'] ?? ''),
+        ]);
+    }
+
     if ($orderNumber === '') {
         FotoApp\flash('danger', 'Bitte zuerst eine Auftragsnummer eingeben.');
         FotoApp\redirect('dashboard');
     }
 
     $result = $storage->storeUploads($orderNumber, $categoryCode, $files, $user, $config);
-    $photos->saveManifest($result['manifest']);
+
+    if (($result['saved_count'] ?? 0) > 0) {
+        $photos->saveManifest($result['manifest']);
+    }
+
     $_SESSION['active_order_number'] = $orderNumber;
     $_SESSION['active_category_code'] = (string)($result['manifest']['category_code'] ?? $categoryCode);
-    FotoApp\flash('success', sprintf('%d Foto(s) gespeichert.', count($result['manifest']['photos'])));
+
+    $savedCount = (int)($result['saved_count'] ?? 0);
+    $attemptedCount = (int)($result['attempted_count'] ?? 0);
+    if ($savedCount > 0) {
+        FotoApp\flash('success', sprintf('%d von %d Foto(s) gespeichert.', $savedCount, $attemptedCount));
+    } else {
+        $hint = $attemptedCount === 0
+            ? 'Es ist kein Upload in PHP angekommen (moeglich: Scanner/Browser sendet kein multipart, Proxy/Firewall blockt, oder Request zu gross).'
+            : 'Dateien wurden gesendet, aber beim Verarbeiten verworfen.';
+        FotoApp\flash('danger', sprintf('Kein Foto gespeichert. %s', $hint));
+    }
+
     if ($auth->isAdmin()) {
-        FotoApp\redirect('order.view&manifest=' . urlencode($result['manifest']['manifest_id']));
+        if ($savedCount > 0) {
+            FotoApp\redirect('order.view&manifest=' . urlencode((string)($result['manifest']['manifest_id'] ?? '')));
+        }
+        FotoApp\redirect('dashboard');
     }
     FotoApp\redirect('dashboard');
 }
@@ -664,6 +696,144 @@ if ($route === 'admin.settings') {
         'config' => $config,
         'csrf' => FotoApp\csrf_token(),
         'logoUrl' => $logoUrl,
+    ]);
+    return;
+}
+
+if ($route === 'admin.logs') {
+    $auth->requireAdmin();
+
+    $logPath = FotoApp\APP_STORAGE . '/logs/upload-diagnostics.log';
+    $filterRequestId = trim((string)($_GET['request_id'] ?? ''));
+    $filterStatus = trim((string)($_GET['status'] ?? ''));
+    $filterErrorLabel = trim((string)($_GET['error_label'] ?? ''));
+    $filterIp = trim((string)($_GET['ip'] ?? ''));
+    $filterFrom = trim((string)($_GET['from'] ?? ''));
+    $filterTo = trim((string)($_GET['to'] ?? ''));
+    $filterFailuresOnly = !empty($_GET['failures_only']);
+    $export = trim((string)($_GET['export'] ?? ''));
+
+    $fromTs = $filterFrom !== '' ? strtotime($filterFrom) : null;
+    $toTs = $filterTo !== '' ? strtotime($filterTo) : null;
+    if ($toTs !== null) {
+        $toTs += 59;
+    }
+
+    $rows = [];
+    if (is_file($logPath)) {
+        $lines = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+        for ($index = count($lines) - 1; $index >= 0; $index--) {
+            $line = (string)$lines[$index];
+            $decoded = json_decode($line, true);
+            if (!is_array($decoded)) {
+                continue;
+            }
+
+            $context = is_array($decoded['context'] ?? null) ? $decoded['context'] : [];
+            $timestamp = (string)($decoded['ts'] ?? '');
+            $status = (string)($context['status'] ?? '');
+            $event = (string)($context['event'] ?? '');
+            $requestId = (string)($decoded['request_id'] ?? ($context['request_id'] ?? ''));
+            $errorLabel = (string)($context['error_label'] ?? '');
+            $ip = (string)($decoded['remote_addr'] ?? '');
+            $userAgent = (string)($decoded['user_agent'] ?? '');
+            $orderNumber = (string)($context['order_number'] ?? '');
+            $username = (string)($context['username'] ?? '');
+            $fileName = (string)($context['file_name'] ?? ($context['original_name'] ?? ''));
+            $size = (int)($context['size'] ?? 0);
+
+            if ($filterRequestId !== '' && stripos($requestId, $filterRequestId) === false) {
+                continue;
+            }
+            if ($filterStatus !== '' && strcasecmp($status, $filterStatus) !== 0) {
+                continue;
+            }
+            if ($filterErrorLabel !== '' && strcasecmp($errorLabel, $filterErrorLabel) !== 0) {
+                continue;
+            }
+            if ($filterIp !== '' && stripos($ip, $filterIp) === false) {
+                continue;
+            }
+            if ($filterFailuresOnly && $status !== '' && str_starts_with($status, 'failed_') === false) {
+                continue;
+            }
+
+            if ($fromTs !== null || $toTs !== null) {
+                $entryTs = strtotime($timestamp);
+                if ($entryTs === false) {
+                    continue;
+                }
+                if ($fromTs !== null && $entryTs < $fromTs) {
+                    continue;
+                }
+                if ($toTs !== null && $entryTs > $toTs) {
+                    continue;
+                }
+            }
+
+            $rows[] = [
+                'ts' => $timestamp,
+                'request_id' => $requestId,
+                'event' => $event,
+                'status' => $status,
+                'error_label' => $errorLabel,
+                'order_number' => $orderNumber,
+                'username' => $username,
+                'ip' => $ip,
+                'user_agent' => $userAgent,
+                'file_name' => $fileName,
+                'size' => $size,
+            ];
+        }
+    }
+
+    if ($export === 'csv') {
+        if (!headers_sent()) {
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="upload_diagnostics_export.csv"');
+        }
+        $out = fopen('php://output', 'w');
+        if ($out !== false) {
+            fputcsv($out, ['ts', 'request_id', 'event', 'status', 'error_label', 'order_number', 'username', 'ip', 'user_agent', 'file_name', 'size']);
+            foreach ($rows as $row) {
+                fputcsv($out, [
+                    $row['ts'],
+                    $row['request_id'],
+                    $row['event'],
+                    $row['status'],
+                    $row['error_label'],
+                    $row['order_number'],
+                    $row['username'],
+                    $row['ip'],
+                    $row['user_agent'],
+                    $row['file_name'],
+                    (string)$row['size'],
+                ]);
+            }
+            fclose($out);
+        }
+        return;
+    }
+
+    $displayRows = array_slice($rows, 0, 200);
+
+    View::render('admin_logs', [
+        'appName' => $config['app_name'],
+        'user' => $user,
+        'logoUrl' => $logoUrl,
+        'rows' => $displayRows,
+        'totalRows' => count($rows),
+        'logExists' => is_file($logPath),
+        'logPath' => $logPath,
+        'filters' => [
+            'request_id' => $filterRequestId,
+            'status' => $filterStatus,
+            'error_label' => $filterErrorLabel,
+            'ip' => $filterIp,
+            'from' => $filterFrom,
+            'to' => $filterTo,
+            'failures_only' => $filterFailuresOnly,
+        ],
     ]);
     return;
 }

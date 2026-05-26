@@ -113,6 +113,7 @@ declare(strict_types=1);
                 <a class="btn btn-outline-primary btn-sm" href="<?= htmlspecialchars(FotoApp\route_url('admin.users'), ENT_QUOTES, 'UTF-8') ?>">Benutzer</a>
                 <a class="btn btn-outline-primary btn-sm" href="<?= htmlspecialchars(FotoApp\route_url('admin.categories'), ENT_QUOTES, 'UTF-8') ?>">Kategorien</a>
                 <a class="btn btn-outline-primary btn-sm" href="<?= htmlspecialchars(FotoApp\route_url('admin.settings'), ENT_QUOTES, 'UTF-8') ?>">Einstellungen</a>
+                <a class="btn btn-outline-danger btn-sm" href="<?= htmlspecialchars(FotoApp\route_url('admin.logs'), ENT_QUOTES, 'UTF-8') ?>">Upload-Logs</a>
                 <a class="btn btn-dark btn-sm" href="<?= htmlspecialchars(FotoApp\route_url('logout'), ENT_QUOTES, 'UTF-8') ?>">Logout</a>
             <?php endif; ?>
             <?php if (!empty($logoUrl)): ?>
