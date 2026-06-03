@@ -30,8 +30,38 @@ foreach ([APP_STORAGE, APP_DATA, APP_UPLOADS, APP_MANIFESTS, APP_BRANDING, APP_S
     }
 }
 
+$sessionLifetimeSeconds = (int)(getenv('FOTOAPP_SESSION_LIFETIME') ?: 60 * 60 * 24 * 14);
+if ($sessionLifetimeSeconds < 1800) {
+    $sessionLifetimeSeconds = 1800;
+}
+
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
+
+ini_set('session.gc_maxlifetime', (string)$sessionLifetimeSeconds);
+ini_set('session.cookie_lifetime', (string)$sessionLifetimeSeconds);
+ini_set('session.use_strict_mode', '1');
+
+session_set_cookie_params([
+    'lifetime' => $sessionLifetimeSeconds,
+    'path' => '/',
+    'secure' => $isHttps,
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
+}
+
+if (session_status() === PHP_SESSION_ACTIVE && session_id() !== '') {
+    setcookie(session_name(), session_id(), [
+        'expires' => time() + $sessionLifetimeSeconds,
+        'path' => '/',
+        'secure' => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 Config::ensureDefaultFiles();

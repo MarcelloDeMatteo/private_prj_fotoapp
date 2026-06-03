@@ -16,6 +16,7 @@ final class Auth
             return false;
         }
 
+        session_regenerate_id(true);
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['view_mode'] = $user['role'] === 'admin' ? 'admin' : 'scan';
 
