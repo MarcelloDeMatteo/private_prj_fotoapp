@@ -124,8 +124,12 @@ function format_datetime_ch(?string $value): string
     }
 
     try {
-        $date = new \DateTimeImmutable($value);
-        $date = $date->setTimezone(new \DateTimeZone('Europe/Zurich'));
+        $targetTimezone = new \DateTimeZone(date_default_timezone_get());
+        $hasOffset = preg_match('/(Z|[+\-]\d{2}:\d{2})$/', $value) === 1;
+        $date = $hasOffset
+            ? new \DateTimeImmutable($value)
+            : new \DateTimeImmutable($value, $targetTimezone);
+        $date = $date->setTimezone($targetTimezone);
         return $date->format('d.m.Y H:i');
     } catch (\Throwable) {
         return $value;

@@ -13,6 +13,18 @@ declare(strict_types=1);
                 <div class="form-text">Empfohlen: transparentes PNG, Höhe ca. 40-80px.</div>
             </div>
             <div class="col-12"><hr></div>
+            <div class="col-12 col-md-4">
+                <label class="form-label">Auftrag-Timer (Sekunden)</label>
+                <input class="form-control" name="scan_timer_seconds" type="number" min="5" max="3600" step="1" value="<?= (int)($config['scan_timer']['seconds'] ?? 60) ?>">
+                <div class="form-text">Gültiger Bereich: 5 bis 3600 Sekunden.</div>
+            </div>
+            <div class="col-12 col-md-8 d-flex align-items-end">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="scan_timer_enabled" id="scan_timer_enabled" value="1" <?= !empty($config['scan_timer']['enabled']) ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="scan_timer_enabled">Auftrag-Timer aktivieren</label>
+                </div>
+            </div>
+            <div class="col-12"><hr></div>
             <div class="col-12 col-md-4"><label class="form-label">Host</label><input class="form-control" name="remote_host" value="<?= htmlspecialchars((string)($config['remote']['host'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
             <div class="col-12 col-md-2"><label class="form-label">Port</label><input class="form-control" name="remote_port" type="number" value="<?= (int)($config['remote']['port'] ?? 21) ?>"></div>
             <div class="col-12 col-md-3"><label class="form-label">Benutzer</label><input class="form-control" name="remote_username" value="<?= htmlspecialchars((string)($config['remote']['username'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>

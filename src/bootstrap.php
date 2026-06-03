@@ -35,4 +35,16 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 Config::ensureDefaultFiles();
+$settings = Config::load();
+$configuredTimezone = trim((string)($settings['timezone'] ?? 'Europe/Zurich'));
+if ($configuredTimezone === '') {
+    $configuredTimezone = 'Europe/Zurich';
+}
+
+try {
+    date_default_timezone_set($configuredTimezone);
+} catch (\Throwable) {
+    date_default_timezone_set('Europe/Zurich');
+}
+
 Database::instance();

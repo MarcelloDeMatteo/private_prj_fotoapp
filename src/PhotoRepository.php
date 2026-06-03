@@ -199,7 +199,7 @@ final class PhotoRepository
             if ((string)($item['order_number'] ?? '') !== $orderNumber) {
                 return false;
             }
-            if ((string)($item['category_code'] ?? '') !== $categoryCode) {
+            if ($categoryCode !== '' && (string)($item['category_code'] ?? '') !== $categoryCode) {
                 return false;
             }
             if ((int)($item['user_id'] ?? 0) !== $userId) {

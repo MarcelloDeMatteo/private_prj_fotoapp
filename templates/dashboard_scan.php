@@ -128,14 +128,21 @@ if ($selectedCategory === '' && !empty($categories)) {
 }
 
 $activeOrderNumber = trim((string)($activeOrderNumber ?? ''));
+$timerSeconds = (int)($scanTimerSeconds ?? 60);
+if ($timerSeconds < 5) {
+    $timerSeconds = 5;
+}
+$timerEnabled = !empty($scanTimerEnabled);
 
 $recentItems = $recent;
 if (empty($isAdmin)) {
     $groupedRecent = [];
     foreach ($recent as $item) {
-        $groupKey = strtolower((string)($item['order_number'] ?? '') . '|' . (string)($item['category_code'] ?? '') . '|' . (string)($item['user_id'] ?? 0));
+        $groupKey = strtolower((string)($item['order_number'] ?? '') . '|' . (string)($item['user_id'] ?? 0));
         $timestamp = (string)($item['updated_at'] ?? $item['created_at'] ?? '');
         $groupDate = substr($timestamp, 0, 10);
+        $code = (string)($item['category_code'] ?? '');
+        $label = (string)($item['category_label'] ?? $code);
         if ($groupDate === '') {
             $groupDate = date('Y-m-d');
         }
@@ -145,11 +152,19 @@ if (empty($isAdmin)) {
             $groupedRecent[$groupKey]['captures_count'] = 1;
             $groupedRecent[$groupKey]['latest_timestamp'] = $timestamp;
             $groupedRecent[$groupKey]['group_date'] = $groupDate;
+            $groupedRecent[$groupKey]['category_codes'] = $code !== '' ? [$code] : [];
+            $groupedRecent[$groupKey]['category_labels'] = $code !== '' ? [$code => $label] : [];
             continue;
         }
 
         $groupedRecent[$groupKey]['photos_count'] += count((array)($item['photos'] ?? []));
         $groupedRecent[$groupKey]['captures_count']++;
+        if ($code !== '' && !in_array($code, (array)$groupedRecent[$groupKey]['category_codes'], true)) {
+            $groupedRecent[$groupKey]['category_codes'][] = $code;
+        }
+        if ($code !== '') {
+            $groupedRecent[$groupKey]['category_labels'][$code] = $label;
+        }
         if (strcmp($timestamp, (string)$groupedRecent[$groupKey]['latest_timestamp']) > 0) {
             $groupedRecent[$groupKey]['latest_timestamp'] = $timestamp;
             $groupedRecent[$groupKey]['manifest_id'] = $item['manifest_id'] ?? $groupedRecent[$groupKey]['manifest_id'];
@@ -189,16 +204,18 @@ if (empty($isAdmin)) {
                 <?php if ($activeOrderNumber !== ''): ?>
                     <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-10 border border-light border-opacity-25 rounded-3 p-2 mb-3" id="activeOrderBar">
                         <div class="small d-flex align-items-center gap-2">
-                            <svg id="orderCountdownRing" width="34" height="34" viewBox="0 0 34 34" style="flex-shrink:0;cursor:default" title="Auftrag läuft ab">
-                                <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
-                                <circle id="orderCountdownArc" cx="17" cy="17" r="14" fill="none" stroke="#ffffff" stroke-width="3"
-                                    stroke-dasharray="87.96" stroke-dashoffset="0"
-                                    stroke-linecap="round"
-                                    transform="rotate(-90 17 17)"
-                                    style="transition:stroke 0.5s"/>
-                                <text id="orderCountdownText" x="17" y="21" text-anchor="middle"
-                                    font-size="10" fill="white" font-family="system-ui,sans-serif" font-weight="700">60</text>
-                            </svg>
+                            <?php if ($timerEnabled): ?>
+                                <svg id="orderCountdownRing" width="34" height="34" viewBox="0 0 34 34" style="flex-shrink:0;cursor:default" title="Auftrag läuft ab">
+                                    <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+                                    <circle id="orderCountdownArc" cx="17" cy="17" r="14" fill="none" stroke="#ffffff" stroke-width="3"
+                                        stroke-dasharray="87.96" stroke-dashoffset="0"
+                                        stroke-linecap="round"
+                                        transform="rotate(-90 17 17)"
+                                        style="transition:stroke 0.5s"/>
+                                    <text id="orderCountdownText" x="17" y="21" text-anchor="middle"
+                                        font-size="10" fill="white" font-family="system-ui,sans-serif" font-weight="700"><?= $timerSeconds ?></text>
+                                </svg>
+                            <?php endif; ?>
                             Aktiver Auftrag: <strong><?= htmlspecialchars($activeOrderNumber, ENT_QUOTES, 'UTF-8') ?></strong>
                         </div>
                         <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('order.reset'), ENT_QUOTES, 'UTF-8') ?>" class="m-0" id="orderResetForm">
@@ -271,14 +288,18 @@ if (empty($isAdmin)) {
             });
         });
 
-        // Auftrag-Timeout Countdown (60 Sekunden)
+        // Auftrag-Timeout Countdown (konfigurierbar)
         (function () {
+            var TIMER_ENABLED = <?= json_encode($timerEnabled) ?>;
+            if (!TIMER_ENABLED) {
+                return;
+            }
             var arc        = document.getElementById('orderCountdownArc');
             var label      = document.getElementById('orderCountdownText');
             var resetForm  = document.getElementById('orderResetForm');
             if (!arc || !label || !resetForm) { return; }
 
-            var TIMEOUT      = 60;
+            var TIMEOUT      = <?= (int)$timerSeconds ?>;
             var CIRCUMF      = 87.96;
             var ORDER_NUMBER = <?= json_encode($activeOrderNumber ?? '') ?>;
             var STORAGE_KEY  = 'fotoapp_order_start_' + ORDER_NUMBER;
@@ -321,10 +342,19 @@ if (empty($isAdmin)) {
                     <?php foreach ($recentItems as $item): ?>
                         <?php $photoCount = isset($item['photos_count']) ? (int)$item['photos_count'] : count((array)($item['photos'] ?? [])); ?>
                         <?php
+                        $categoryCodes = (array)($item['category_codes'] ?? []);
+                        sort($categoryCodes);
+                        $categoryLabelMap = (array)($item['category_labels'] ?? []);
+                        $categoryParts = [];
+                        foreach ($categoryCodes as $code) {
+                            $categoryParts[] = $code . ' - ' . ($categoryLabelMap[$code] ?? $code);
+                        }
+                        $categorySummary = $categoryParts !== []
+                            ? implode(', ', $categoryParts)
+                            : ((string)$item['category_code'] . ' - ' . (string)$item['category_label']);
                         $detailHref = FotoApp\route_url('order.view&manifest=' . urlencode((string)($item['manifest_id'] ?? '')));
                         if (empty($isAdmin) && isset($item['group_date'])) {
                             $detailHref = FotoApp\route_url('order.view&order=' . urlencode((string)($item['order_number'] ?? ''))
-                                . '&category=' . urlencode((string)($item['category_code'] ?? ''))
                                 . '&user_id=' . urlencode((string)($item['user_id'] ?? '0'))
                                 . '&date=' . urlencode((string)$item['group_date']));
                         }
@@ -332,7 +362,7 @@ if (empty($isAdmin)) {
                         <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="<?= htmlspecialchars($detailHref, ENT_QUOTES, 'UTF-8') ?>">
                             <div>
                                 <div class="fw-semibold"><?= htmlspecialchars((string)$item['order_number'], ENT_QUOTES, 'UTF-8') ?></div>
-                                <div class="text-secondary small"><?= htmlspecialchars((string)$item['category_code'] . ' - ' . (string)$item['category_label'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$item['username'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <div class="text-secondary small"><?= htmlspecialchars($categorySummary, ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$item['username'], ENT_QUOTES, 'UTF-8') ?></div>
                             </div>
                             <span class="badge text-bg-primary rounded-pill"><?= $photoCount ?> Fotos</span>
                         </a>

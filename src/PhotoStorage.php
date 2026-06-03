@@ -376,7 +376,8 @@ final class PhotoStorage
         $maxSequence = 0;
         foreach (glob($pattern) ?: [] as $file) {
             $fileName = basename($file);
-            if (!preg_match('/^co_[^_]+_[^_]+_(\d+)\.[a-z0-9]+$/i', $fileName, $matches)) {
+            // Extract trailing sequence regardless of underscores in sanitized order/category values.
+            if (!preg_match('/_(\d+)\.[a-z0-9]+$/i', $fileName, $matches)) {
                 continue;
             }
 

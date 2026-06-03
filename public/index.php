@@ -286,12 +286,6 @@ if ($route === 'scan.upload' && $method === 'POST') {
         FotoApp\flash('danger', sprintf('Kein Foto gespeichert. %s', $hint));
     }
 
-    if ($auth->isAdmin()) {
-        if ($savedCount > 0) {
-            FotoApp\redirect('order.view&manifest=' . urlencode((string)($result['manifest']['manifest_id'] ?? '')));
-        }
-        FotoApp\redirect('dashboard');
-    }
     FotoApp\redirect('dashboard');
 }
 
@@ -309,7 +303,7 @@ if ($route === 'order.view') {
         $groupUserId = (int)($_GET['user_id'] ?? 0);
         $groupDate = trim((string)($_GET['date'] ?? ''));
 
-        if ($groupOrder === '' || $groupCategory === '' || $groupUserId <= 0) {
+        if ($groupOrder === '' || $groupUserId <= 0) {
             FotoApp\flash('danger', 'Auftrag nicht gefunden.');
             FotoApp\redirect('dashboard');
         }
@@ -334,11 +328,35 @@ if ($route === 'order.view') {
         }
         usort($combinedPhotos, static fn (array $a, array $b): int => strcmp((string)($b['created_at'] ?? ''), (string)($a['created_at'] ?? '')));
 
+        $categoryCodes = [];
+        $categoryLabels = [];
+        foreach ($manifests as $entry) {
+            $code = (string)($entry['category_code'] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            $label = (string)($entry['category_label'] ?? ($config['categories'][$code]['label'] ?? $code));
+            $categoryCodes[$code] = true;
+            $categoryLabels[$code] = $label;
+        }
+        $categoryCodeList = array_keys($categoryCodes);
+        sort($categoryCodeList);
+
+        $categoryLabelParts = [];
+        foreach ($categoryCodeList as $code) {
+            $categoryLabelParts[] = $code . ' - ' . ($categoryLabels[$code] ?? $code);
+        }
+
+        $displayCategoryCode = count($categoryCodeList) === 1 ? $categoryCodeList[0] : 'MIX';
+        $displayCategoryLabel = count($categoryLabelParts) > 0
+            ? implode(', ', $categoryLabelParts)
+            : (string)($first['category_label'] ?? ($config['categories'][$groupCategory]['label'] ?? $groupCategory));
+
         $manifest = [
             'manifest_id' => '',
             'order_number' => $groupOrder,
-            'category_code' => $groupCategory,
-            'category_label' => (string)($first['category_label'] ?? ($config['categories'][$groupCategory]['label'] ?? $groupCategory)),
+            'category_code' => $displayCategoryCode,
+            'category_label' => $displayCategoryLabel,
             'username' => (string)($first['username'] ?? ''),
             'user_id' => $groupUserId,
             'photos' => $combinedPhotos,
@@ -398,7 +416,7 @@ if ($route === 'order.delete.group' && $method === 'POST') {
     $groupOrder = trim((string)($_POST['order'] ?? ''));
     $groupCategory = trim((string)($_POST['category'] ?? ''));
     $groupUserId = (int)($_POST['user_id'] ?? 0);
-    if ($groupOrder === '' || $groupCategory === '' || $groupUserId <= 0) {
+    if ($groupOrder === '' || $groupUserId <= 0) {
         FotoApp\flash('danger', 'Auftrag nicht gefunden.');
         FotoApp\redirect('search');
     }
@@ -626,6 +644,18 @@ if ($route === 'admin.settings') {
     if ($method === 'POST') {
         FotoApp\verify_csrf();
         $config['app_name'] = trim((string)($_POST['app_name'] ?? $config['app_name']));
+        $timerEnabled = !empty($_POST['scan_timer_enabled']);
+        $timerSeconds = (int)($_POST['scan_timer_seconds'] ?? ($config['scan_timer']['seconds'] ?? 60));
+        if ($timerSeconds < 5) {
+            $timerSeconds = 5;
+        }
+        if ($timerSeconds > 3600) {
+            $timerSeconds = 3600;
+        }
+        $config['scan_timer'] = [
+            'enabled' => $timerEnabled,
+            'seconds' => $timerSeconds,
+        ];
         $config['remote'] = [
             'host' => trim((string)($_POST['remote_host'] ?? '')),
             'port' => (int)($_POST['remote_port'] ?? 21),
@@ -855,4 +885,6 @@ View::render($mode === 'admin' && $auth->isAdmin() ? 'dashboard_admin' : 'dashbo
     'logoUrl' => $logoUrl,
     'activeOrderNumber' => (string)($_SESSION['active_order_number'] ?? ''),
     'activeCategoryCode' => (string)($_SESSION['active_category_code'] ?? ''),
+    'scanTimerEnabled' => !empty($config['scan_timer']['enabled']),
+    'scanTimerSeconds' => (int)($config['scan_timer']['seconds'] ?? 60),
 ]);

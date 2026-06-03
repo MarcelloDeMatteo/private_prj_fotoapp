@@ -52,10 +52,15 @@ final class Config
     {
         return [
             'app_name' => 'Foto Scan App',
+            'timezone' => 'Europe/Zurich',
             'storage_mode' => 'local',
             'default_category' => 'WE',
             'branding' => [
                 'logo_path' => '',
+            ],
+            'scan_timer' => [
+                'enabled' => true,
+                'seconds' => 60,
             ],
             'remote' => [
                 'host' => '',

@@ -3,19 +3,29 @@ declare(strict_types=1);
 
 $groupedResults = [];
 foreach ($results as $result) {
-    $groupKey = strtolower((string)($result['order_number'] ?? '') . '|' . (string)($result['category_code'] ?? '') . '|' . (string)($result['user_id'] ?? 0));
+    $groupKey = strtolower((string)($result['order_number'] ?? '') . '|' . (string)($result['user_id'] ?? 0));
     $timestamp = (string)($result['updated_at'] ?? $result['created_at'] ?? '');
+    $code = (string)($result['category_code'] ?? '');
+    $label = (string)($result['category_label'] ?? $code);
 
     if (!isset($groupedResults[$groupKey])) {
         $groupedResults[$groupKey] = $result;
         $groupedResults[$groupKey]['photos_count'] = count((array)($result['photos'] ?? []));
         $groupedResults[$groupKey]['captures_count'] = 1;
         $groupedResults[$groupKey]['latest_timestamp'] = $timestamp;
+        $groupedResults[$groupKey]['category_codes'] = $code !== '' ? [$code] : [];
+        $groupedResults[$groupKey]['category_labels'] = $code !== '' ? [$code => $label] : [];
         continue;
     }
 
     $groupedResults[$groupKey]['photos_count'] += count((array)($result['photos'] ?? []));
     $groupedResults[$groupKey]['captures_count']++;
+    if ($code !== '' && !in_array($code, (array)$groupedResults[$groupKey]['category_codes'], true)) {
+        $groupedResults[$groupKey]['category_codes'][] = $code;
+    }
+    if ($code !== '') {
+        $groupedResults[$groupKey]['category_labels'][$code] = $label;
+    }
     if (strcmp($timestamp, (string)$groupedResults[$groupKey]['latest_timestamp']) > 0) {
         $groupedResults[$groupKey]['latest_timestamp'] = $timestamp;
         $groupedResults[$groupKey]['manifest_id'] = $result['manifest_id'] ?? $groupedResults[$groupKey]['manifest_id'];
@@ -61,16 +71,25 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
             <?php foreach ($displayResults as $result): ?>
                 <?php
                 $openHref = FotoApp\route_url('order.view&order=' . urlencode((string)($result['order_number'] ?? ''))
-                    . '&category=' . urlencode((string)($result['category_code'] ?? ''))
                     . '&user_id=' . urlencode((string)($result['user_id'] ?? '0')));
                 $photoCount = (int)($result['photos_count'] ?? count((array)($result['photos'] ?? [])));
                 $capturesCount = (int)($result['captures_count'] ?? 1);
+                $categoryCodes = (array)($result['category_codes'] ?? []);
+                sort($categoryCodes);
+                $categoryLabelMap = (array)($result['category_labels'] ?? []);
+                $categoryParts = [];
+                foreach ($categoryCodes as $code) {
+                    $categoryParts[] = $code . ' - ' . ($categoryLabelMap[$code] ?? $code);
+                }
+                $categorySummary = $categoryParts !== []
+                    ? implode(', ', $categoryParts)
+                    : ((string)($result['category_code'] ?? '') . ' - ' . (string)($result['category_label'] ?? ''));
                 ?>
                 <div class="list-group-item py-3">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                         <div>
                             <div class="fw-semibold"><?= htmlspecialchars((string)$result['order_number'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="text-secondary small"><?= htmlspecialchars((string)$result['category_code'] . ' - ' . (string)$result['category_label'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$result['username'], ENT_QUOTES, 'UTF-8') ?><?php if ($capturesCount > 1): ?> · <?= $capturesCount ?> Erfassungen<?php endif; ?></div>
+                            <div class="text-secondary small"><?= htmlspecialchars($categorySummary, ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$result['username'], ENT_QUOTES, 'UTF-8') ?><?php if ($capturesCount > 1): ?> · <?= $capturesCount ?> Erfassungen<?php endif; ?></div>
                         </div>
                         <div class="d-flex align-items-center gap-3">
                             <span class="small text-secondary"><?= $photoCount ?> Foto(s)</span>
@@ -78,7 +97,7 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
                                 <form method="post" action="<?= htmlspecialchars(FotoApp\route_url('order.delete.group'), ENT_QUOTES, 'UTF-8') ?>" onsubmit="return confirm('Auftrag wirklich löschen? (alle Erfassungen dieser Gruppe)');" class="m-0">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
                                     <input type="hidden" name="order" value="<?= htmlspecialchars((string)($result['order_number'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-                                    <input type="hidden" name="category" value="<?= htmlspecialchars((string)($result['category_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                    <input type="hidden" name="category" value="">
                                     <input type="hidden" name="user_id" value="<?= htmlspecialchars((string)($result['user_id'] ?? '0'), ENT_QUOTES, 'UTF-8') ?>">
                                     <button class="btn btn-sm btn-outline-danger">Löschen</button>
                                 </form>
