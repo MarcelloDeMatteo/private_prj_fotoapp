@@ -1,0 +1,27 @@
+{
+    "manifest_id": "_76562__ko_20260529115749",
+    "order_number": "!76562\"",
+    "category_code": "KO",
+    "category_label": "Kommissionierung",
+    "username": "Kevin.L",
+    "user_id": 11,
+    "created_at": "2026-05-29T11:57:49+00:00",
+    "updated_at": "2026-05-29T11:57:49+00:00",
+    "search_blob": "!76562\" ko kommissionierung kevin.l",
+    "photos": [
+        {
+            "photo_id": "7b9e15e473385b27",
+            "file_name": "co__76562__KO_001.jpg",
+            "local_path": "\/var\/www\/html\/fotoapp\/src\/..\/storage\/uploads\/co__76562__KO_001.jpg",
+            "mime_type": "image\/jpeg",
+            "sequence": 1,
+            "order_number": "!76562\"",
+            "category_code": "KO",
+            "category_label": "Kommissionierung",
+            "uploaded_by": "Kevin.L",
+            "user_id": 11,
+            "created_at": "2026-05-29T11:57:49+00:00",
+            "updated_at": "2026-05-29T11:57:49+00:00"
+        }
+    ]
+}

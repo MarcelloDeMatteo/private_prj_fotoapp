@@ -1,0 +1,27 @@
+{
+    "manifest_id": "djjdj_ko_20260521115524",
+    "order_number": "djjdj",
+    "category_code": "KO",
+    "category_label": "Kommissionierung",
+    "username": "scanner",
+    "user_id": 8,
+    "created_at": "2026-05-21T11:55:24+00:00",
+    "updated_at": "2026-05-21T11:55:24+00:00",
+    "search_blob": "djjdj ko kommissionierung scanner",
+    "photos": [
+        {
+            "photo_id": "f5aae1df47a6c211",
+            "file_name": "co_djjdj_KO_001.jpg",
+            "local_path": "\/var\/www\/html\/fotoapp\/src\/..\/storage\/uploads\/co_djjdj_KO_001.jpg",
+            "mime_type": "image\/jpeg",
+            "sequence": 1,
+            "order_number": "djjdj",
+            "category_code": "KO",
+            "category_label": "Kommissionierung",
+            "uploaded_by": "scanner",
+            "user_id": 8,
+            "created_at": "2026-05-21T11:55:24+00:00",
+            "updated_at": "2026-05-21T11:55:24+00:00"
+        }
+    ]
+}

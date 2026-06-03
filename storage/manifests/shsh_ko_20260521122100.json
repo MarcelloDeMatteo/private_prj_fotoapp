@@ -1,0 +1,27 @@
+{
+    "manifest_id": "shsh_ko_20260521122100",
+    "order_number": "shsh",
+    "category_code": "KO",
+    "category_label": "Kommissionierung",
+    "username": "scanner",
+    "user_id": 8,
+    "created_at": "2026-05-21T12:21:00+00:00",
+    "updated_at": "2026-05-21T12:21:00+00:00",
+    "search_blob": "shsh ko kommissionierung scanner",
+    "photos": [
+        {
+            "photo_id": "f5fbdf8cef194661",
+            "file_name": "co_shsh_KO_001.jpg",
+            "local_path": "\/var\/www\/html\/fotoapp\/src\/..\/storage\/uploads\/co_shsh_KO_001.jpg",
+            "mime_type": "image\/jpeg",
+            "sequence": 1,
+            "order_number": "shsh",
+            "category_code": "KO",
+            "category_label": "Kommissionierung",
+            "uploaded_by": "scanner",
+            "user_id": 8,
+            "created_at": "2026-05-21T12:21:00+00:00",
+            "updated_at": "2026-05-21T12:21:00+00:00"
+        }
+    ]
+}

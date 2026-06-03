@@ -32,3 +32,46 @@
 [20-May-2026 06:40:40 UTC] Fatal startup error: strict_types declaration must be the very first statement in the script in /var/www/html/fotoapp/src/PhotoRepository.php:29
 [20-May-2026 06:40:47 UTC] PHP Fatal error:  strict_types declaration must be the very first statement in the script in /var/www/html/fotoapp/src/PhotoRepository.php on line 29
 [20-May-2026 06:40:47 UTC] Fatal startup error: strict_types declaration must be the very first statement in the script in /var/www/html/fotoapp/src/PhotoRepository.php:29
+2026-05-20T09:05:38+00:00
+ok
+test
+[26-May-2026 11:19:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php on line 250
+[26-May-2026 11:19:36 UTC] Fatal startup error: Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php:250
+[26-May-2026 11:22:06 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php on line 250
+[26-May-2026 11:22:06 UTC] Fatal startup error: Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php:250
+[26-May-2026 11:22:10 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php on line 250
+[26-May-2026 11:22:10 UTC] Fatal startup error: Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php:250
+[26-May-2026 11:23:39 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php on line 250
+[26-May-2026 11:23:39 UTC] Fatal startup error: Uncaught Error: Call to undefined function FotoApp\app_log() in /var/www/html/fotoapp/public/index.php:250
+Stack trace:
+#0 /var/www/html/fotoapp/index.php(13): require()
+#1 {main}
+  thrown in /var/www/html/fotoapp/public/index.php:250

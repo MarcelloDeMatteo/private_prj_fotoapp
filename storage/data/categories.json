@@ -1,14 +1,30 @@
 {
     "WE": {
         "label": "Wareneingang",
-        "is_default": true
+        "is_default": false
     },
     "KO": {
         "label": "Kommissionierung",
-        "is_default": false
+        "is_default": true
     },
     "VS": {
         "label": "Versand",
+        "is_default": false
+    },
+    "WA": {
+        "label": "Warenausgang",
+        "is_default": false
+    },
+    "PR": {
+        "label": "Profil",
+        "is_default": false
+    },
+    "PO": {
+        "label": "Post",
+        "is_default": false
+    },
+    "NL": {
+        "label": "Nachlieferung",
         "is_default": false
     }
 }

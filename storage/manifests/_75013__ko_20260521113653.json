@@ -1,0 +1,27 @@
+{
+    "manifest_id": "_75013__ko_20260521113653",
+    "order_number": "!75013\"",
+    "category_code": "KO",
+    "category_label": "Kommissionierung",
+    "username": "scanner",
+    "user_id": 2,
+    "created_at": "2026-05-21T11:36:53+00:00",
+    "updated_at": "2026-05-21T11:36:53+00:00",
+    "search_blob": "!75013\" ko kommissionierung scanner",
+    "photos": [
+        {
+            "photo_id": "3dffbd448f5f1070",
+            "file_name": "co__75013__KO_001.jpg",
+            "local_path": "\/var\/www\/html\/fotoapp\/src\/..\/storage\/uploads\/co__75013__KO_001.jpg",
+            "mime_type": "image\/jpeg",
+            "sequence": 1,
+            "order_number": "!75013\"",
+            "category_code": "KO",
+            "category_label": "Kommissionierung",
+            "uploaded_by": "scanner",
+            "user_id": 2,
+            "created_at": "2026-05-21T11:36:53+00:00",
+            "updated_at": "2026-05-21T11:36:53+00:00"
+        }
+    ]
+}
