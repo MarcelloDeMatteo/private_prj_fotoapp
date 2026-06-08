@@ -87,6 +87,16 @@ final class PhotoStorage
                 continue;
             }
 
+            $compression = $this->compressImageInPlace($localPath);
+            $this->logDiagnostics($fileContext + [
+                'event' => 'scan_upload_compression',
+                'compression_applied' => (bool)($compression['applied'] ?? false),
+                'compression_reason' => (string)($compression['reason'] ?? ''),
+                'compression_before_bytes' => (int)($compression['before_bytes'] ?? 0),
+                'compression_after_bytes' => (int)($compression['after_bytes'] ?? 0),
+                'compression_saved_bytes' => (int)($compression['saved_bytes'] ?? 0),
+            ]);
+
             $this->syncRemote($localPath, $fileName);
             $this->logDiagnostics($fileContext + [
                 'status' => 'stored_local',
@@ -213,6 +223,157 @@ final class PhotoStorage
             'm' => (int)($number * 1024 * 1024),
             'k' => (int)($number * 1024),
             default => (int)$number,
+        };
+    }
+
+    private function compressImageInPlace(string $path): array
+    {
+        $beforeBytes = (int)(@filesize($path) ?: 0);
+        if ($beforeBytes <= 0) {
+            return [
+                'applied' => false,
+                'reason' => 'file_size_unknown',
+                'before_bytes' => 0,
+                'after_bytes' => 0,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        if (!extension_loaded('gd') || !function_exists('imagecreatetruecolor')) {
+            return [
+                'applied' => false,
+                'reason' => 'gd_not_available',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        $imageInfo = @getimagesize($path);
+        if (!is_array($imageInfo)) {
+            return [
+                'applied' => false,
+                'reason' => 'not_an_image',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        $mime = (string)($imageInfo['mime'] ?? '');
+        $width = (int)($imageInfo[0] ?? 0);
+        $height = (int)($imageInfo[1] ?? 0);
+        if ($width <= 0 || $height <= 0) {
+            return [
+                'applied' => false,
+                'reason' => 'invalid_dimensions',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        $source = $this->createImageResource($path, $mime);
+        if ($source === null) {
+            return [
+                'applied' => false,
+                'reason' => 'unsupported_mime_' . ($mime !== '' ? $mime : 'unknown'),
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        $target = $source;
+        $maxDimension = 2560;
+        $largest = max($width, $height);
+        if ($largest > $maxDimension) {
+            $scale = $maxDimension / $largest;
+            $newWidth = max(1, (int)round($width * $scale));
+            $newHeight = max(1, (int)round($height * $scale));
+            $resized = imagecreatetruecolor($newWidth, $newHeight);
+            if ($resized !== false) {
+                if ($mime === 'image/png' || $mime === 'image/webp') {
+                    imagealphablending($resized, false);
+                    imagesavealpha($resized, true);
+                }
+                imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                $target = $resized;
+            }
+        }
+
+        $tmpCompressed = $path . '.compressed';
+        $written = $this->writeCompressedImage($target, $tmpCompressed, $mime);
+
+        if (is_resource($source) || $source instanceof \GdImage) {
+            imagedestroy($source);
+        }
+        if ($target !== $source && (is_resource($target) || $target instanceof \GdImage)) {
+            imagedestroy($target);
+        }
+
+        if (!$written || !is_file($tmpCompressed)) {
+            if (is_file($tmpCompressed)) {
+                @unlink($tmpCompressed);
+            }
+            return [
+                'applied' => false,
+                'reason' => 'compression_write_failed',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        $afterBytes = (int)(@filesize($tmpCompressed) ?: 0);
+        if ($afterBytes <= 0 || $afterBytes >= $beforeBytes) {
+            @unlink($tmpCompressed);
+            return [
+                'applied' => false,
+                'reason' => 'not_smaller',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        if (!@rename($tmpCompressed, $path)) {
+            @unlink($tmpCompressed);
+            return [
+                'applied' => false,
+                'reason' => 'replace_failed',
+                'before_bytes' => $beforeBytes,
+                'after_bytes' => $beforeBytes,
+                'saved_bytes' => 0,
+            ];
+        }
+
+        return [
+            'applied' => true,
+            'reason' => 'compressed',
+            'before_bytes' => $beforeBytes,
+            'after_bytes' => $afterBytes,
+            'saved_bytes' => $beforeBytes - $afterBytes,
+        ];
+    }
+
+    private function createImageResource(string $path, string $mime)
+    {
+        return match ($mime) {
+            'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : null,
+            'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : null,
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null,
+            default => null,
+        };
+    }
+
+    private function writeCompressedImage($image, string $path, string $mime): bool
+    {
+        return match ($mime) {
+            'image/jpeg' => function_exists('imagejpeg') ? (bool)@imagejpeg($image, $path, 80) : false,
+            'image/png' => function_exists('imagepng') ? (bool)@imagepng($image, $path, 8) : false,
+            'image/webp' => function_exists('imagewebp') ? (bool)@imagewebp($image, $path, 78) : false,
+            default => false,
         };
     }
 
