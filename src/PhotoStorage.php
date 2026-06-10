@@ -73,14 +73,36 @@ final class PhotoStorage
             $extension = $this->extensionFor($file['name'] ?? '', $tmp);
             $fileName = $this->buildFileName($orderNumber, $categoryCode, $sequence, $extension);
             $localPath = APP_UPLOADS . '/' . $fileName;
+
+            $incomingSize = (int)($file['size'] ?? 0);
+            $targetDir = dirname($localPath);
+            $freeBytes = @disk_free_space($targetDir);
+            $requiredBytes = max(1024 * 1024, $incomingSize + (5 * 1024 * 1024));
+            if ($freeBytes !== false && $freeBytes < $requiredBytes) {
+                $failure = $fileContext + [
+                    'status' => 'failed_no_space_precheck',
+                    'tmp_name' => $tmp,
+                    'local_path' => $localPath,
+                    'incoming_size_bytes' => $incomingSize,
+                    'free_bytes' => (int)$freeBytes,
+                    'required_bytes' => $requiredBytes,
+                ];
+                $failures[] = $failure;
+                $this->logDiagnostics($failure);
+                continue;
+            }
+
             if (!move_uploaded_file($tmp, $localPath)) {
                 $lastError = error_get_last();
+                $lastErrorText = is_array($lastError) ? (string)($lastError['message'] ?? '') : '';
+                $isNoSpace = stripos($lastErrorText, 'No space left on device') !== false
+                    || stripos($lastErrorText, 'errno=28') !== false;
                 $failure = $fileContext + [
-                    'status' => 'failed_move_uploaded_file',
+                    'status' => $isNoSpace ? 'failed_no_space' : 'failed_move_uploaded_file',
                     'tmp_name' => $tmp,
                     'local_path' => $localPath,
                     'target_dir_writable' => is_writable(dirname($localPath)),
-                    'last_error' => is_array($lastError) ? (string)($lastError['message'] ?? '') : '',
+                    'last_error' => $lastErrorText,
                 ];
                 $failures[] = $failure;
                 $this->logDiagnostics($failure);
@@ -122,6 +144,13 @@ final class PhotoStorage
         }
 
         $savedCount = count($photos);
+        $noSpaceFailures = 0;
+        foreach ($failures as $failure) {
+            $status = (string)($failure['status'] ?? '');
+            if ($status === 'failed_no_space' || $status === 'failed_no_space_precheck') {
+                $noSpaceFailures++;
+            }
+        }
 
         $manifest = [
             'manifest_id' => $manifestId,
@@ -158,6 +187,7 @@ final class PhotoStorage
             'saved_count' => $savedCount,
             'attempted_count' => count($uploadedFiles),
             'failed_count' => count($failures),
+            'no_space_failures' => $noSpaceFailures,
             'request_id' => $requestId,
         ];
     }

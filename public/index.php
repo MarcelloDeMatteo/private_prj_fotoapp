@@ -277,12 +277,17 @@ if ($route === 'scan.upload' && $method === 'POST') {
 
     $savedCount = (int)($result['saved_count'] ?? 0);
     $attemptedCount = (int)($result['attempted_count'] ?? 0);
+    $noSpaceFailures = (int)($result['no_space_failures'] ?? 0);
     if ($savedCount > 0) {
         FotoApp\flash('success', sprintf('%d von %d Foto(s) gespeichert.', $savedCount, $attemptedCount));
     } else {
-        $hint = $attemptedCount === 0
-            ? 'Es ist kein Upload in PHP angekommen (moeglich: Scanner/Browser sendet kein multipart, Proxy/Firewall blockt, oder Request zu gross).'
-            : 'Dateien wurden gesendet, aber beim Verarbeiten verworfen.';
+        if ($noSpaceFailures > 0) {
+            $hint = 'Server-Speicher voll. Bitte IT informieren (kein freier Speicherplatz auf Upload-Laufwerk).';
+        } elseif ($attemptedCount === 0) {
+            $hint = 'Es ist kein Upload in PHP angekommen (moeglich: Scanner/Browser sendet kein multipart, Proxy/Firewall blockt, oder Request zu gross).';
+        } else {
+            $hint = 'Dateien wurden gesendet, aber beim Verarbeiten verworfen.';
+        }
         FotoApp\flash('danger', sprintf('Kein Foto gespeichert. %s', $hint));
     }
 
