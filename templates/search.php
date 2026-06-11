@@ -89,7 +89,7 @@ usort($displayResults, static fn (array $a, array $b): int => strcmp((string)($b
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                         <div>
                             <div class="fw-semibold"><?= htmlspecialchars((string)$result['order_number'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="text-secondary small"><?= htmlspecialchars($categorySummary, ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$result['username'], ENT_QUOTES, 'UTF-8') ?><?php if ($capturesCount > 1): ?> · <?= $capturesCount ?> Erfassungen<?php endif; ?></div>
+                            <div class="text-secondary small"><?= htmlspecialchars($categorySummary, ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$result['username'], ENT_QUOTES, 'UTF-8') ?><?php if ($capturesCount > 1): ?> · <?= $capturesCount ?> Erfassungen<?php endif; ?> · <?= htmlspecialchars((string)\FotoApp\format_datetime_ch((string)($result['latest_timestamp'] ?? '')), ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
                         <div class="d-flex align-items-center gap-3">
                             <span class="small text-secondary"><?= $photoCount ?> Foto(s)</span>
