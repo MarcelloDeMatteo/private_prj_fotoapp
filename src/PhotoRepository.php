@@ -18,7 +18,7 @@ final class PhotoRepository
             $dateToday = $now->format('Y-m-d');
             $dateYesterday = $now->modify('-1 day')->format('Y-m-d');
             $weekStart = $now->modify('monday this week')->format('Y-m-d');
-            foreach ($this->allManifests() as $item) {
+            foreach ($this->iterateManifests() as $item) {
                 $all++;
                 $ts = (string)($item['updated_at'] ?? $item['created_at'] ?? '');
                 if ($ts === '') continue;
@@ -151,21 +151,26 @@ final class PhotoRepository
 
     public function search(string $query, string $category, string $owner, ?int $ownerId): array
     {
+        $queryLower = strtolower($query);
+        $ownerLower = strtolower($owner);
         $results = [];
-        foreach ($this->allManifests() as $manifest) {
+        // Manifeste werden einzeln gestreamt und nur als schlanke Zusammenfassung
+        // (ohne photos-Array / search_blob) behalten, sonst läuft der Speicher
+        // bei vielen Manifesten voll (memory_limit-Fatal in der Suche).
+        foreach ($this->iterateManifests() as $manifest) {
             if ($ownerId !== null && (int)($manifest['user_id'] ?? 0) !== $ownerId) {
                 continue;
             }
             if ($category !== '' && ($manifest['category_code'] ?? '') !== $category) {
                 continue;
             }
-            if ($query !== '' && !str_contains((string)($manifest['order_number'] ?? ''), $query) && !str_contains((string)($manifest['search_blob'] ?? ''), strtolower($query))) {
+            if ($query !== '' && !str_contains((string)($manifest['order_number'] ?? ''), $query) && !str_contains((string)($manifest['search_blob'] ?? ''), $queryLower)) {
                 continue;
             }
-            if ($owner !== '' && !str_contains(strtolower((string)($manifest['username'] ?? '')), strtolower($owner))) {
+            if ($owner !== '' && !str_contains(strtolower((string)($manifest['username'] ?? '')), $ownerLower)) {
                 continue;
             }
-            $results[] = $manifest;
+            $results[] = $this->summarizeManifest($manifest);
         }
 
         usort($results, static fn (array $a, array $b): int => strcmp((string)($b['updated_at'] ?? $b['created_at'] ?? ''), (string)($a['updated_at'] ?? $a['created_at'] ?? '')));
@@ -175,17 +180,19 @@ final class PhotoRepository
 
     public function recentForUser(?int $userId, bool $todayOnly = false): array
     {
-        $items = $this->allManifests();
-        if ($userId !== null) {
-            $items = array_values(array_filter($items, static fn (array $item): bool => (int)($item['user_id'] ?? 0) === $userId));
-        }
-
-        if ($todayOnly) {
-            $today = date('Y-m-d');
-            $items = array_values(array_filter($items, static function (array $item) use ($today): bool {
+        $today = date('Y-m-d');
+        $items = [];
+        foreach ($this->iterateManifests() as $item) {
+            if ($userId !== null && (int)($item['user_id'] ?? 0) !== $userId) {
+                continue;
+            }
+            if ($todayOnly) {
                 $timestamp = (string)($item['updated_at'] ?? $item['created_at'] ?? '');
-                return str_starts_with($timestamp, $today);
-            }));
+                if (!str_starts_with($timestamp, $today)) {
+                    continue;
+                }
+            }
+            $items[] = $this->summarizeManifest($item);
         }
 
         usort($items, static fn (array $a, array $b): int => strcmp((string)($b['updated_at'] ?? $b['created_at'] ?? ''), (string)($a['updated_at'] ?? $a['created_at'] ?? '')));
@@ -195,44 +202,65 @@ final class PhotoRepository
 
     public function manifestsForGroup(string $orderNumber, string $categoryCode, int $userId, ?string $datePrefix = null): array
     {
-        $items = array_values(array_filter($this->allManifests(), static function (array $item) use ($orderNumber, $categoryCode, $userId, $datePrefix): bool {
+        $items = [];
+        foreach ($this->iterateManifests() as $item) {
             if ((string)($item['order_number'] ?? '') !== $orderNumber) {
-                return false;
+                continue;
             }
             if ($categoryCode !== '' && (string)($item['category_code'] ?? '') !== $categoryCode) {
-                return false;
+                continue;
             }
             if ((int)($item['user_id'] ?? 0) !== $userId) {
-                return false;
+                continue;
             }
             if ($datePrefix !== null && $datePrefix !== '') {
                 $timestamp = (string)($item['updated_at'] ?? $item['created_at'] ?? '');
                 if (!str_starts_with($timestamp, $datePrefix)) {
-                    return false;
+                    continue;
                 }
             }
 
-            return true;
-        }));
+            $items[] = $item;
+        }
 
         usort($items, static fn (array $a, array $b): int => strcmp((string)($b['updated_at'] ?? $b['created_at'] ?? ''), (string)($a['updated_at'] ?? $a['created_at'] ?? '')));
 
         return $items;
     }
 
-    private function allManifests(): array
+    /**
+     * Streamt alle Manifeste einzeln, damit nie alle gleichzeitig im Speicher liegen.
+     */
+    private function iterateManifests(): \Generator
     {
         $files = glob(APP_MANIFESTS . '/*.json') ?: [];
-        $items = [];
         foreach ($files as $file) {
             $decoded = json_decode((string) file_get_contents($file), true);
             if (is_array($decoded)) {
                 $decoded['manifest_file'] = basename($file);
-                $items[] = $decoded;
+                yield $decoded;
             }
         }
+    }
 
-        return $items;
+    /**
+     * Schlanke Zusammenfassung eines Manifests für Listen/Suche:
+     * nur Metadaten plus photos_count statt des kompletten photos-Arrays.
+     */
+    private function summarizeManifest(array $manifest): array
+    {
+        return [
+            'manifest_id' => (string)($manifest['manifest_id'] ?? ''),
+            'manifest_file' => (string)($manifest['manifest_file'] ?? ''),
+            'order_number' => (string)($manifest['order_number'] ?? ''),
+            'category_code' => (string)($manifest['category_code'] ?? ''),
+            'category_label' => (string)($manifest['category_label'] ?? ''),
+            'username' => (string)($manifest['username'] ?? ''),
+            'user_id' => (int)($manifest['user_id'] ?? 0),
+            'created_at' => (string)($manifest['created_at'] ?? ''),
+            'updated_at' => (string)($manifest['updated_at'] ?? ''),
+            'photos_count' => count((array)($manifest['photos'] ?? [])),
+        ];
     }
 
     private function manifestPath(string $manifestId): string

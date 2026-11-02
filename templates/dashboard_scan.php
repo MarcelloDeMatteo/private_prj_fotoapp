@@ -146,9 +146,11 @@ if (empty($isAdmin)) {
         if ($groupDate === '') {
             $groupDate = date('Y-m-d');
         }
+        $photosCount = isset($item['photos_count']) ? (int)$item['photos_count'] : count((array)($item['photos'] ?? []));
+        unset($item['photos'], $item['search_blob']);
         if (!isset($groupedRecent[$groupKey])) {
             $groupedRecent[$groupKey] = $item;
-            $groupedRecent[$groupKey]['photos_count'] = count((array)($item['photos'] ?? []));
+            $groupedRecent[$groupKey]['photos_count'] = $photosCount;
             $groupedRecent[$groupKey]['captures_count'] = 1;
             $groupedRecent[$groupKey]['latest_timestamp'] = $timestamp;
             $groupedRecent[$groupKey]['group_date'] = $groupDate;
@@ -157,7 +159,7 @@ if (empty($isAdmin)) {
             continue;
         }
 
-        $groupedRecent[$groupKey]['photos_count'] += count((array)($item['photos'] ?? []));
+        $groupedRecent[$groupKey]['photos_count'] += $photosCount;
         $groupedRecent[$groupKey]['captures_count']++;
         if ($code !== '' && !in_array($code, (array)$groupedRecent[$groupKey]['category_codes'], true)) {
             $groupedRecent[$groupKey]['category_codes'][] = $code;

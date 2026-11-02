@@ -8,9 +8,13 @@ foreach ($results as $result) {
     $code = (string)($result['category_code'] ?? '');
     $label = (string)($result['category_label'] ?? $code);
 
+    $photosCount = isset($result['photos_count']) ? (int)$result['photos_count'] : count((array)($result['photos'] ?? []));
+    // Schwere Felder nie in die Gruppierung übernehmen (Speicherschutz).
+    unset($result['photos'], $result['search_blob']);
+
     if (!isset($groupedResults[$groupKey])) {
         $groupedResults[$groupKey] = $result;
-        $groupedResults[$groupKey]['photos_count'] = count((array)($result['photos'] ?? []));
+        $groupedResults[$groupKey]['photos_count'] = $photosCount;
         $groupedResults[$groupKey]['captures_count'] = 1;
         $groupedResults[$groupKey]['latest_timestamp'] = $timestamp;
         $groupedResults[$groupKey]['category_codes'] = $code !== '' ? [$code] : [];
@@ -18,7 +22,7 @@ foreach ($results as $result) {
         continue;
     }
 
-    $groupedResults[$groupKey]['photos_count'] += count((array)($result['photos'] ?? []));
+    $groupedResults[$groupKey]['photos_count'] += $photosCount;
     $groupedResults[$groupKey]['captures_count']++;
     if ($code !== '' && !in_array($code, (array)$groupedResults[$groupKey]['category_codes'], true)) {
         $groupedResults[$groupKey]['category_codes'][] = $code;
